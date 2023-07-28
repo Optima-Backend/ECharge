@@ -1,81 +1,62 @@
-﻿//var builder = WebApplication.CreateBuilder(args);
-
-//// Add services to the container.
-
-//builder.Services.AddControllers();
-//// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-//builder.Services.AddEndpointsApiExplorer();
-//builder.Services.AddSwaggerGen();
-
-//var app = builder.Build();
-
-//// Configure the HTTP request pipeline.
-//if (app.Environment.IsDevelopment())
-//{
-//    app.UseSwagger();
-//    app.UseSwaggerUI();
-//}
-
-//app.UseHttpsRedirection();
-
-//app.UseAuthorization();
-
-//app.MapControllers();
-
-//app.Run();
-
+﻿using ECharge.Infrastructure;
 using Microsoft.OpenApi.Models;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+internal class Program
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
-    // Add a security scheme for JWT Bearer authentication
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    private static void Main(string[] args)
     {
-        Description = "JWT Authorization header using the Bearer scheme.",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer"
-    });
-    // Add a security requirement for all API operations to use JWT Bearer authentication
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
+        var builder = WebApplication.CreateBuilder(args);
+
+        IConfiguration configuration = new ConfigurationBuilder()
+            .SetBasePath(builder.Environment.ContentRootPath)
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .Build();
+
+        builder.Services.AddInfrastructure(configuration);
+
+        builder.Services.AddControllers();
+
+        builder.Services.AddSwaggerGen(c =>
         {
-            new OpenApiSecurityScheme
+            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
+                Description = "JWT Authorization header using the Bearer scheme.",
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer"
+            });
+
+            c.AddSecurityRequirement(new OpenApiSecurityRequirement
+            {
                 {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type = ReferenceType.SecurityScheme,
+                            Id = "Bearer"
+                        }
+                    },
+                    Array.Empty<string>()
                 }
-            },
-            Array.Empty<string>()
-        }
-    });
-});
+            });
+        });
 
-var app = builder.Build();
+        builder.Services.AddHttpClient();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
-    });
+        var app = builder.Build();
+
+        app.UseSwagger();
+
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "ECharge API v1");
+        });
+
+        app.UseAuthentication();
+        app.UseAuthorization();
+
+        app.MapControllers();
+
+        app.Run();
+    }
 }
-
-app.UseHttpsRedirection();
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();

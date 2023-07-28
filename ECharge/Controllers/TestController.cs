@@ -16,7 +16,7 @@ namespace ECharge.Api.Controllers
         // GET: /<controller>/
         public IActionResult GenerateToken()
         {
-            var a = _jwtService.GenerateJwtToken(new GenerateTokenModel { Name = "Orkhan", Surname = "Amirli", UserId = "123", Role = "Admin" });
+            var a = _jwtService.GenerateJwtToken(new GenerateTokenModel { Name = "Orknhghjghan", Surname = "Amirli", UserId = "123", Role = "Admin" });
             return Ok(a);
         }
 

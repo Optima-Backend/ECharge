@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="EVtrip\" />
+    <None Remove="EVtrip\Models\" />
+    <None Remove="EVtrip\DTOs\" />
+    <None Remove="EVtrip\Interfaces\" />
+    <None Remove="EVtrip\DTOs\Requests\" />
+    <None Remove="EVtrip\DTOs\Responses\" />
+    <None Remove="EVtrip\DTOs\Helpers\" />
+    <None Remove="Repositories\" />
+    <None Remove="JWT\" />
+    <None Remove="JWT\Interface\" />
+    <None Remove="JWT\DTOs\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="EVtrip\" />
+    <Folder Include="EVtrip\Models\" />
+    <Folder Include="EVtrip\DTOs\" />
+    <Folder Include="EVtrip\Interfaces\" />
+    <Folder Include="EVtrip\DTOs\Requests\" />
+    <Folder Include="EVtrip\DTOs\Responses\" />
+    <Folder Include="EVtrip\DTOs\Helpers\" />
+    <Folder Include="Repositories\" />
+    <Folder Include="JWT\" />
+    <Folder Include="JWT\Interface\" />
+    <Folder Include="JWT\DTOs\" />
+  </ItemGroup>
+</Project>

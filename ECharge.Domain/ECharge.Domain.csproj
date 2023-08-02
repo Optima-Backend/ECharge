@@ -18,6 +18,12 @@
     <None Remove="JWT\" />
     <None Remove="JWT\Interface\" />
     <None Remove="JWT\DTOs\" />
+    <None Remove="PulPal\" />
+    <None Remove="PulPal\Model\" />
+    <None Remove="PulPal\Interface\" />
+    <None Remove="DTOs\" />
+    <None Remove="PulPal\DTOs\" />
+    <None Remove="Entities\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Entities\" />
@@ -32,6 +38,12 @@
     <Folder Include="JWT\" />
     <Folder Include="JWT\Interface\" />
     <Folder Include="JWT\DTOs\" />
+    <Folder Include="PulPal\" />
+    <Folder Include="PulPal\Model\" />
+    <Folder Include="PulPal\Interface\" />
+    <Folder Include="DTOs\" />
+    <Folder Include="PulPal\DTOs\" />
+    <Folder Include="Entities\" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Entities\Transaction.cs" />

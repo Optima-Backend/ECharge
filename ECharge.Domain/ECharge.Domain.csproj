@@ -26,7 +26,6 @@
     <None Remove="Entities\" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Entities\" />
     <Folder Include="EVtrip\" />
     <Folder Include="EVtrip\Models\" />
     <Folder Include="EVtrip\DTOs\" />
@@ -39,13 +38,9 @@
     <Folder Include="JWT\Interface\" />
     <Folder Include="JWT\DTOs\" />
     <Folder Include="PulPal\" />
-    <Folder Include="PulPal\Model\" />
     <Folder Include="PulPal\Interface\" />
     <Folder Include="DTOs\" />
     <Folder Include="PulPal\DTOs\" />
     <Folder Include="Entities\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Remove="Entities\Transaction.cs" />
   </ItemGroup>
 </Project>

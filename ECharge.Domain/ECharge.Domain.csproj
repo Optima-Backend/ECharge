@@ -20,6 +20,7 @@
     <None Remove="JWT\DTOs\" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Entities\" />
     <Folder Include="EVtrip\" />
     <Folder Include="EVtrip\Models\" />
     <Folder Include="EVtrip\DTOs\" />
@@ -31,5 +32,8 @@
     <Folder Include="JWT\" />
     <Folder Include="JWT\Interface\" />
     <Folder Include="JWT\DTOs\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Entities\Transaction.cs" />
   </ItemGroup>
 </Project>

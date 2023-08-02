@@ -11,12 +11,20 @@
     <None Remove="Services\EVtrip\" />
     <None Remove="Repositories\" />
     <None Remove="Services\JWT\" />
+    <None Remove="Services\PulPal\" />
+    <None Remove="Services\PulPal\Utils\" />
+    <None Remove="Services\PulPal\Service\" />
+    <None Remove="Services\DatabaseContext\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Services\" />
     <Folder Include="Services\EVtrip\" />
     <Folder Include="Repositories\" />
     <Folder Include="Services\JWT\" />
+    <Folder Include="Services\PulPal\" />
+    <Folder Include="Services\PulPal\Utils\" />
+    <Folder Include="Services\PulPal\Service\" />
+    <Folder Include="Services\DatabaseContext\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ECharge.Domain\ECharge.Domain.csproj" />

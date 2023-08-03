@@ -20,6 +20,14 @@ namespace ECharge.Api.Controllers
         {
             _context = context;
         }
+        
+        public class AcceptDeliveryCommand
+        {
+            public string ExternalId { get; set; }
+            public string Message { get; set; }
+            public bool Success { get; set; }
+        }
+        
 
         [Route("/api/echarge/acceptdelivery")]
         [HttpPost]
@@ -64,24 +72,31 @@ namespace ECharge.Api.Controllers
             }
         }
 
-        public class AcceptDeliveryCommand
-        {
-            public string ExternalId { get; set; }
-            public string Message { get; set; }
-            public bool Success { get; set; }
-        }
+
 
         [Route("/api/echarge/generatelink")]
-        [HttpGet]
-        public async Task<IActionResult> GenerateLink()
+        [HttpPost]
+        public async Task<IActionResult> GenerateLink(ChargepointTimeSpanModel timeSpanModel)
         {
             PulPalPayment payment = new();
+
+            int price = 5;
+
+            int minutesOfCharged = (timeSpanModel.StopDate - timeSpanModel.StartDate).Minutes;
+
+            double hoursOfCharged = (double)minutesOfCharged / 60;
+            
 
             var externalId = Guid.NewGuid().ToString();
             await _context.Transactions.AddAsync(new Transaction
             {
                 CreatedDate = DateTime.Now,
-                ExternalId = externalId
+                ExternalId = externalId,
+                ChargerId = timeSpanModel.ChargepointId,
+                StartDate = timeSpanModel.StartDate,
+                StopDate = timeSpanModel.StopDate,
+                Amount = hoursOfCharged * price
+
             });
 
             await _context.SaveChangesAsync();

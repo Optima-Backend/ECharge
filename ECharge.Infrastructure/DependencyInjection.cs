@@ -1,9 +1,11 @@
 ﻿using System.Text;
 using ECharge.Domain.EVtrip.Interfaces;
 using ECharge.Domain.JWT.Interface;
+using ECharge.Infrastructure.Services.DatabaseContext;
 using ECharge.Infrastructure.Services.EVtrip;
 using ECharge.Infrastructure.Services.JWT;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
@@ -17,6 +19,8 @@ namespace ECharge.Infrastructure
             services.AddScoped<IChargePointApiClient, ChargePointApiClient>();
 
             services.AddSingleton<IJwtService, JwtService>();
+
+            services.AddSingleton<DataContext>();
 
             var jwtSettings = configuration.GetSection("JwtSettings");
             var secretKey = jwtSettings["SecretKey"];
@@ -44,6 +48,8 @@ namespace ECharge.Infrastructure
                     ClockSkew = TimeSpan.Zero
                 };
             });
+
+            //services.AddDbContext<Context>(options => { options.UseSqlServer(configuration.GetConnectionString("Default")); });
 
             return services;
         }

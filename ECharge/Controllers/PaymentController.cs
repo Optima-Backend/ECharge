@@ -4,6 +4,9 @@ using ECharge.Infrastructure.Services.PulPal.Utils;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using ECharge.Infrastructure.Services.DatabaseContext;
+using ECharge.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -11,6 +14,13 @@ namespace ECharge.Api.Controllers
 {
     public class PaymentController : Controller
     {
+        private readonly DataContext _context;
+
+        public PaymentController(DataContext context)
+        {
+            _context = context;
+        }
+
         [Route("/api/echarge/acceptdelivery")]
         [HttpPost]
         public async Task AcceptPayment()
@@ -29,17 +39,29 @@ namespace ECharge.Api.Controllers
             var model = JsonConvert.DeserializeObject<PulPalPaymentDeliveryModel>(json);
             var localSignature = PulPalPayment.GetDeliverySignature(UriHelper.GetDisplayUrl(Request), nonce, json);
 
-            if (localSignature != acceptedSignature)
+            if (!string.IsNullOrEmpty(model?.ExternalId))
             {
-                acceptDeliveryCommand.Message = "Invalid signature";
-            }
-            else
-            {
-                acceptDeliveryCommand.Success = true;
-                acceptDeliveryCommand.Message = "Payment success!";
-                acceptDeliveryCommand.ExternalId = model.ExternalId;
-            }
+                var transaction = await _context.Transactions.FirstOrDefaultAsync(x => x.ExternalId == model.ExternalId);
 
+                if (localSignature == acceptedSignature)
+                {
+
+                    transaction.Message = "The bill has been paid successfully!";
+                    transaction.PaymentDate = DateTime.Now;
+                    transaction.Status = true;
+                    transaction.StatusCode = 200;
+                }
+                else
+                {
+                    transaction.Message = "Something went wrong during payment process!";
+                    transaction.PaymentDate = DateTime.Now;
+                    transaction.StatusCode = 400;
+                }
+
+                _context.Transactions.Update(transaction);
+
+                await _context.SaveChangesAsync();
+            }
         }
 
         public class AcceptDeliveryCommand
@@ -51,14 +73,28 @@ namespace ECharge.Api.Controllers
 
         [Route("/api/echarge/generatelink")]
         [HttpGet]
-        public IActionResult GenerateLink()
+        public async Task<IActionResult> GenerateLink()
         {
             PulPalPayment payment = new();
 
-            var a = "123";
             var externalId = Guid.NewGuid().ToString();
+            await _context.Transactions.AddAsync(new Transaction
+            {
+                CreatedDate = DateTime.Now,
+                ExternalId = externalId
+            });
 
-            return Ok(payment.GeneratePaymentUrl(1, "ECharge", "Payment for ECharge by customer", Guid.NewGuid().ToString()));
+            await _context.SaveChangesAsync();
+
+            var model = new ExternalIdModel
+            {
+                Link = payment.GeneratePaymentUrl(1, "ECharge", "Payment for ECharge by customer", externalId),
+                Message = "Payment URL has been created successfully. Please click the URL to pay the bill",
+                Success = true
+            };
+
+            return Ok(model);
+
         }
     }
 }

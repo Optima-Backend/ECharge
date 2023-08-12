@@ -15,6 +15,12 @@
     <None Remove="Services\PulPal\Utils\" />
     <None Remove="Services\PulPal\Service\" />
     <None Remove="Services\DatabaseContext\" />
+    <None Remove="Services\HttpRequest\" />
+    <None Remove="Services\GatewayApiHelper\" />
+    <None Remove="Services\CibPay\" />
+    <None Remove="Services\CibPay\Service\" />
+    <None Remove="Services\CibPay\Certificate\" />
+    <None Remove="Services\CibPay\Certificate\Api\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Services\" />
@@ -25,6 +31,12 @@
     <Folder Include="Services\PulPal\Utils\" />
     <Folder Include="Services\PulPal\Service\" />
     <Folder Include="Services\DatabaseContext\" />
+    <Folder Include="Services\HttpRequest\" />
+    <Folder Include="Services\GatewayApiHelper\" />
+    <Folder Include="Services\CibPay\" />
+    <Folder Include="Services\CibPay\Service\" />
+    <Folder Include="Services\CibPay\Certificate\" />
+    <Folder Include="Services\CibPay\Certificate\Api\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ECharge.Domain\ECharge.Domain.csproj" />
@@ -41,5 +53,10 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.32.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="7.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.9" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Services\CibPay\Certificate\Api\taxiapp.p12">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

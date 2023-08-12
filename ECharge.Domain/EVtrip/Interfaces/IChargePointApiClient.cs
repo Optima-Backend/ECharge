@@ -6,7 +6,7 @@ namespace ECharge.Domain.EVtrip.Interfaces
 {
     public interface IChargePointApiClient
     {
-        Task<List<ChargePoint>> GetAllChargePointsAsync();
+        Task<List<ChargePointShortView>> GetAllChargePointsAsync();
         Task<List<ChargingSession>> GetChargingSessionsAsync(string chargepointId);
         Task<OperationResult<ChargingSession>> StartChargingAsync(string chargepointId, StartChargingRequest request);
         Task<OperationResult<ChargingSession>> StopChargingAsync(string chargepointId, StopChargingRequest request);

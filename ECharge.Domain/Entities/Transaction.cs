@@ -1,43 +1,34 @@
+using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ECharge.Domain.Enums;
 
 namespace ECharge.Domain.Entities;
 
-[Table("PulpalTransactions")]
+[Table("PaymentTransaction")]
 public class Transaction
 {
     public int Id { get; set; }
     
-    [Required]
-    public string? ExternalId { get; set; }
+    public required string Link { get; set; }
 
-    [Column("ExternalIdCreationTime")]
+    [Column("PaymentStatus")]
+    [Required]
+    public PaymentStatus Status { get; set; }
+    
+    public required string OrderId { get; set; }
+    
+    //Navigation property
+    public Session? Session { get; set; }
+    
+    public int AmountRefund { get; set; }
+    
     [Required]
     public DateTime CreatedDate { get; set; }
     
-    public DateTime PaymentDate { get; set; }
+    public DateTime UpdatedDate { get; set; }
     
-    [DefaultValue(false)]
-    [Column("PaidStatus")]
-    public bool Status { get; set; }
-    
-    public string? Message { get; set; }
-    
-    public int StatusCode { get; set; }
-    
-    [Required]
-    public string? ChargerId { get; set; }
-    
-    [Column("StartDateCharging")]
-    [Required]
-    public DateTime StartDate { get; set; }
-    
-    [Column("StopDateCharging")]
-    [Required]
-    public DateTime StopDate { get; set; }
-    
-    [Column("TotalCostOfCharge")]
-    public double Amount { get; set; }
+
 
 }

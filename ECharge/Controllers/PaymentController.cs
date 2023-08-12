@@ -1,5 +1,10 @@
-﻿using ECharge.Domain.PulPal.Model;
+﻿/*
+using System;
+using System.IO;
+using System.Linq;
+using ECharge.Domain.PulPal.Model;
 using System.Text;
+using System.Threading.Tasks;
 using ECharge.Infrastructure.Services.PulPal.Utils;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
@@ -113,4 +118,5 @@ namespace ECharge.Api.Controllers
         }
     }
 }
+*/
 

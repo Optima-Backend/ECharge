@@ -1,8 +1,11 @@
-﻿namespace ECharge.Domain.EVtrip.DTOs.Requests
+﻿using Newtonsoft.Json;
+
+namespace ECharge.Domain.EVtrip.DTOs.Requests
 {
     public class StopChargingRequest
     {
-        public string SessionId { get; set; }
+        [JsonProperty("sessionId")]
+        public string? SessionId { get; set; }
     }
 }
 

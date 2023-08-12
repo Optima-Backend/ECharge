@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 using ECharge.Domain.EVtrip.Interfaces;
 using ECharge.Domain.JWT.Interface;
 using ECharge.Infrastructure.Services.DatabaseContext;
@@ -20,8 +21,11 @@ namespace ECharge.Infrastructure
 
             services.AddSingleton<IJwtService, JwtService>();
 
-            services.AddSingleton<DataContext>();
+            services.AddScoped<IChargePointApiClient, ChargePointApiClient>();
 
+          
+            
+            
             var jwtSettings = configuration.GetSection("JwtSettings");
             var secretKey = jwtSettings["SecretKey"];
             var issuer = jwtSettings["Issuer"];
@@ -49,7 +53,7 @@ namespace ECharge.Infrastructure
                 };
             });
 
-            //services.AddDbContext<Context>(options => { options.UseSqlServer(configuration.GetConnectionString("Default")); });
+         
 
             return services;
         }

@@ -4,7 +4,6 @@
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,9 +24,30 @@
     <None Remove="DTOs\" />
     <None Remove="PulPal\DTOs\" />
     <None Remove="Entities\" />
+    <None Remove="HttpRequest\" />
+    <None Remove="HttpRequest\Interface\" />
+    <None Remove="HttpRequest\Model\" />
+    <None Remove="GatewayApiHelper\" />
+    <None Remove="GatewayApiHelper\Interface\" />
+    <None Remove="GatewayApiHelper\Model\" />
+    <None Remove="CibPay\" />
+    <None Remove="CibPay\Interface\" />
+    <None Remove="CibPay\Model\" />
+    <None Remove="CibPay\Model\CreateOrder\" />
+    <None Remove="CibPay\Model\CreateOrder\Command\" />
+    <None Remove="CibPay\Model\CreateOrder\Request\" />
+    <None Remove="CibPay\Model\CreateOrder\Response\" />
+    <None Remove="CibPay\Model\GetOrder\Query\" />
+    <None Remove="CibPay\Model\Ping\" />
+    <None Remove="CibPay\Model\Ping\Response\" />
+    <None Remove="CibPay\Model\RefundOrder\" />
+    <None Remove="CibPay\Model\RefundOrder\Command\" />
+    <None Remove="CibPay\Model\RefundOrder\Response\" />
+    <None Remove="CibPay\Model\BaseResponse\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="EVtrip\" />
+    <Folder Include="EVtrip\Models\" />
     <Folder Include="EVtrip\DTOs\" />
     <Folder Include="EVtrip\Interfaces\" />
     <Folder Include="EVtrip\DTOs\Requests\" />
@@ -41,6 +61,27 @@
     <Folder Include="PulPal\Interface\" />
     <Folder Include="DTOs\" />
     <Folder Include="PulPal\DTOs\" />
+    <Folder Include="Entities\" />
+    <Folder Include="HttpRequest\" />
+    <Folder Include="HttpRequest\Interface\" />
+    <Folder Include="HttpRequest\Model\" />
+    <Folder Include="GatewayApiHelper\" />
+    <Folder Include="GatewayApiHelper\Interface\" />
+    <Folder Include="GatewayApiHelper\Model\" />
+    <Folder Include="CibPay\" />
+    <Folder Include="CibPay\Interface\" />
+    <Folder Include="CibPay\Model\" />
+    <Folder Include="CibPay\Model\CreateOrder\" />
+    <Folder Include="CibPay\Model\CreateOrder\Command\" />
+    <Folder Include="CibPay\Model\CreateOrder\Request\" />
+    <Folder Include="CibPay\Model\CreateOrder\Response\" />
+    <Folder Include="CibPay\Model\GetOrder\Query\" />
+    <Folder Include="CibPay\Model\Ping\" />
+    <Folder Include="CibPay\Model\Ping\Response\" />
+    <Folder Include="CibPay\Model\RefundOrder\" />
+    <Folder Include="CibPay\Model\RefundOrder\Command\" />
+    <Folder Include="CibPay\Model\RefundOrder\Response\" />
+    <Folder Include="CibPay\Model\BaseResponse\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

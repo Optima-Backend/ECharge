@@ -25,14 +25,14 @@ namespace ECharge.Api.Controllers
         {
             _context = context;
         }
-        
+
         public class AcceptDeliveryCommand
         {
             public string ExternalId { get; set; }
             public string Message { get; set; }
             public bool Success { get; set; }
         }
-        
+
 
         [Route("/api/echarge/acceptdelivery")]
         [HttpPost]
@@ -87,10 +87,11 @@ namespace ECharge.Api.Controllers
 
             int price = 5;
 
-            int minutesOfCharged = (timeSpanModel.StopDate - timeSpanModel.StartDate).Minutes;
+            var minutesOfCharged = timeSpanModel.StopDate - timeSpanModel.StartDate;
 
-            double hoursOfCharged = (double)minutesOfCharged / 60;
-            
+            double minutesDifference = minutesOfCharged.TotalMinutes;
+
+            double hoursOfCharged = Math.Round((double)minutesDifference / 60, 2);
 
             var externalId = Guid.NewGuid().ToString();
             await _context.Transactions.AddAsync(new Transaction

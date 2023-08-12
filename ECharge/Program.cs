@@ -1,4 +1,10 @@
-﻿using ECharge.Infrastructure;
+﻿using System;
+using ECharge.Infrastructure;
+using ECharge.Infrastructure.Services.DatabaseContext;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Models;
 
 internal class Program
@@ -8,13 +14,14 @@ internal class Program
         var builder = WebApplication.CreateBuilder(args);
 
         IConfiguration configuration = new ConfigurationBuilder()
-            .SetBasePath(builder.Environment.ContentRootPath)
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .Build();
 
         builder.Services.AddInfrastructure(configuration);
 
         builder.Services.AddControllers();
+        
 
         builder.Services.AddSwaggerGen(c =>
         {

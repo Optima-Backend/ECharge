@@ -4,6 +4,7 @@
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,7 +28,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="EVtrip\" />
-    <Folder Include="EVtrip\Models\" />
     <Folder Include="EVtrip\DTOs\" />
     <Folder Include="EVtrip\Interfaces\" />
     <Folder Include="EVtrip\DTOs\Requests\" />
@@ -41,6 +41,8 @@
     <Folder Include="PulPal\Interface\" />
     <Folder Include="DTOs\" />
     <Folder Include="PulPal\DTOs\" />
-    <Folder Include="Entities\" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 </Project>

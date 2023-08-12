@@ -34,9 +34,7 @@
     <Folder Include="Services\HttpRequest\" />
     <Folder Include="Services\GatewayApiHelper\" />
     <Folder Include="Services\CibPay\" />
-    <Folder Include="Services\CibPay\Service\" />
     <Folder Include="Services\CibPay\Certificate\" />
-    <Folder Include="Services\CibPay\Certificate\Api\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ECharge.Domain\ECharge.Domain.csproj" />

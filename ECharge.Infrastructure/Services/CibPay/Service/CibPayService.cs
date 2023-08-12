@@ -10,6 +10,7 @@ using System.Security.Cryptography.X509Certificates;
 using ECharge.Domain.CibPay.Model.Ping.Response;
 using ECharge.Domain.CibPay.Model.RefundOrder.Command;
 using ECharge.Domain.CibPay.Model.BaseResponse;
+using ECharge.Infrastructure.Services.CibPay.Certificate.Api;
 
 namespace ECharge.Infrastructure.Services.CibPay.Service
 {
@@ -191,8 +192,9 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
 
         private X509Certificate2 GetCertificate()
         {
-            var certificatePath = "/Users/orkhan/Documents/ECharge/ECharge.Infrastructure/Services/CibPay/Certificate/Api/taxiapp.p12";
-            return new X509Certificate2(certificatePath, "nBR2SFVWZ02g");
+            var cPath = new CertificatePath();
+            
+            return new X509Certificate2(cPath.CurrentPath, "nBR2SFVWZ02g");
         }
     }
 }

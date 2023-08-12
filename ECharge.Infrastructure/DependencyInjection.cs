@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Text;
+using ECharge.Domain.CibPay.Interface;
 using ECharge.Domain.EVtrip.Interfaces;
 using ECharge.Domain.JWT.Interface;
+using ECharge.Infrastructure.Services.CibPay.Service;
 using ECharge.Infrastructure.Services.DatabaseContext;
 using ECharge.Infrastructure.Services.EVtrip;
 using ECharge.Infrastructure.Services.JWT;
@@ -22,6 +24,8 @@ namespace ECharge.Infrastructure
             services.AddSingleton<IJwtService, JwtService>();
 
             services.AddScoped<IChargePointApiClient, ChargePointApiClient>();
+
+            services.AddScoped<ICibPayService, CibPayService>();
 
           
             
@@ -60,4 +64,5 @@ namespace ECharge.Infrastructure
 
     }
 }
+
 

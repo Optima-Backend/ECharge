@@ -193,9 +193,9 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
 
         private X509Certificate2 GetCertificate()
         {
-            var cPath = new CertificatePath();
+            string cPath = new CertificatePath().CurrentPath;
 
-            return new X509Certificate2(cPath.CurrentPath, "nBR2SFVWZ02g");
+            return new X509Certificate2(cPath, "nBR2SFVWZ02g");
         }
     }
 }

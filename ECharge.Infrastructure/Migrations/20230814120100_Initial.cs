@@ -22,7 +22,7 @@ namespace ECharge.Infrastructure.Migrations
                     OrderId = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     AmountRefund = table.Column<int>(type: "int", nullable: false),
                     CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -42,7 +42,7 @@ namespace ECharge.Infrastructure.Migrations
                     PricePerHour = table.Column<int>(type: "int", nullable: false),
                     TransactionId = table.Column<int>(type: "int", nullable: false),
                     Chargingstatus = table.Column<int>(name: "Charging status", type: "int", nullable: false),
-                    UpdatedTime = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    UpdatedTime = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -58,8 +58,7 @@ namespace ECharge.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ChargePointSession_TransactionId",
                 table: "ChargePointSession",
-                column: "TransactionId",
-                unique: true);
+                column: "TransactionId");
         }
 
         /// <inheritdoc />

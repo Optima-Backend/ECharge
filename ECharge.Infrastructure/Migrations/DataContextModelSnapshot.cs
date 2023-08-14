@@ -53,13 +53,12 @@ namespace ECharge.Infrastructure.Migrations
                     b.Property<int>("TransactionId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("UpdatedTime")
+                    b.Property<DateTime?>("UpdatedTime")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TransactionId")
-                        .IsUnique();
+                    b.HasIndex("TransactionId");
 
                     b.ToTable("ChargePointSession");
                 });
@@ -90,7 +89,7 @@ namespace ECharge.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("PaymentStatus");
 
-                    b.Property<DateTime>("UpdatedDate")
+                    b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
@@ -101,17 +100,12 @@ namespace ECharge.Infrastructure.Migrations
             modelBuilder.Entity("ECharge.Domain.Entities.Session", b =>
                 {
                     b.HasOne("ECharge.Domain.Entities.Transaction", "Transaction")
-                        .WithOne("Session")
-                        .HasForeignKey("ECharge.Domain.Entities.Session", "TransactionId")
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Transaction");
-                });
-
-            modelBuilder.Entity("ECharge.Domain.Entities.Transaction", b =>
-                {
-                    b.Navigation("Session");
                 });
 #pragma warning restore 612, 618
         }

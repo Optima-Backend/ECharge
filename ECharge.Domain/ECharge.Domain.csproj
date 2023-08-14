@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Nullable>disable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -44,6 +44,11 @@
     <None Remove="CibPay\Model\RefundOrder\Command\" />
     <None Remove="CibPay\Model\RefundOrder\Response\" />
     <None Remove="CibPay\Model\BaseResponse\" />
+    <None Remove="ChargePointActions\" />
+    <None Remove="ChargePointActions\Interface\" />
+    <None Remove="ChargePointActions\Model\" />
+    <None Remove="ChargePointActions\Model\CreateSession\" />
+    <None Remove="ChargePointActions\Model\CreateTransaction\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="EVtrip\" />
@@ -82,6 +87,11 @@
     <Folder Include="CibPay\Model\RefundOrder\Command\" />
     <Folder Include="CibPay\Model\RefundOrder\Response\" />
     <Folder Include="CibPay\Model\BaseResponse\" />
+    <Folder Include="ChargePointActions\" />
+    <Folder Include="ChargePointActions\Interface\" />
+    <Folder Include="ChargePointActions\Model\" />
+    <Folder Include="ChargePointActions\Model\CreateSession\" />
+    <Folder Include="ChargePointActions\Model\CreateTransaction\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

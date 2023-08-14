@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Text;
+using ECharge.Domain.ChargePointActions.Interface;
+using ECharge.Domain.CibPay.Interface;
 using ECharge.Domain.EVtrip.Interfaces;
 using ECharge.Domain.JWT.Interface;
+using ECharge.Infrastructure.Services.ChargePointActions;
+using ECharge.Infrastructure.Services.CibPay.Service;
 using ECharge.Infrastructure.Services.DatabaseContext;
 using ECharge.Infrastructure.Services.EVtrip;
 using ECharge.Infrastructure.Services.JWT;
@@ -17,15 +21,20 @@ namespace ECharge.Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
+            services.AddSingleton<DataContext>();
             services.AddScoped<IChargePointApiClient, ChargePointApiClient>();
 
             services.AddSingleton<IJwtService, JwtService>();
 
             services.AddScoped<IChargePointApiClient, ChargePointApiClient>();
 
-          
-            
-            
+            services.AddScoped<ICibPayService, CibPayService>();
+
+            services.AddScoped<IChargePointAction, ChargePointAction>();
+
+
+
+
             var jwtSettings = configuration.GetSection("JwtSettings");
             var secretKey = jwtSettings["SecretKey"];
             var issuer = jwtSettings["Issuer"];
@@ -53,11 +62,12 @@ namespace ECharge.Infrastructure
                 };
             });
 
-         
+
 
             return services;
         }
 
     }
 }
+
 

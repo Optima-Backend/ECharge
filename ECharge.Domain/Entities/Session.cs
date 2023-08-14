@@ -8,29 +8,29 @@ namespace ECharge.Domain.Entities;
 public class Session
 {
     public int Id { get; set; }
-    
+
     [Required]
     public required string ChargerPointId { get; set; }
-    
+
     [Required]
     public DateTime StartDate { get; set; }
-    
+
     [Required]
     public DateTime EndDate { get; set; }
-    
+
+    [Required]
     public int Duration { get; set; }
-    
+
+    [Required]
     public int PricePerHour { get; set; }
-    
-    //Foreign key for Transaction table
+
     public int TransactionId { get; set; }
-    
-    //Navigation property for Session
-    public Transaction? Transaction { get; set; }
-    
+
+    public Transaction Transaction { get; set; }
+
     [Column("Charging status")]
     public SessionStatus Status { get; set; }
-    
-    public DateTime UpdatedTime { get; set; }
-    
+
+    public DateTime? UpdatedTime { get; set; }
+
 }

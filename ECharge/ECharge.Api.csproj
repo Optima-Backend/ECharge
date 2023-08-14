@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
-    <Nullable>enable</Nullable>
+    <Nullable>disable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
@@ -15,9 +15,13 @@
 
   <ItemGroup>
     <None Remove="Controllers\" />
+    <None Remove="HostedServices\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ECharge.Infrastructure\ECharge.Infrastructure.csproj">
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="HostedServices\" />
   </ItemGroup>
 </Project>

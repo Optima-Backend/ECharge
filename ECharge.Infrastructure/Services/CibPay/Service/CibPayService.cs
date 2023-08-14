@@ -100,6 +100,7 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
                         expiration_timeout = string.IsNullOrEmpty(command.ExpirationTimeout) ? "4320m" : command.ExpirationTimeout,
                         force3d = command.Force3d ?? 1,
                         language = string.IsNullOrEmpty(command.Language) ? "az" : command.Language,
+                        //https://localhost:7268/api/echarge/payment-redirect-url
                         return_url = string.IsNullOrEmpty(command.ReturnUrl) ? "https://google.com" : command.ReturnUrl
                     },
                     client = new
@@ -193,7 +194,7 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
         private X509Certificate2 GetCertificate()
         {
             var cPath = new CertificatePath();
-            
+
             return new X509Certificate2(cPath.CurrentPath, "nBR2SFVWZ02g");
         }
     }

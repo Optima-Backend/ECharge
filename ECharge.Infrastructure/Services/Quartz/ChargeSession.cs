@@ -38,6 +38,7 @@ namespace ECharge.Infrastructure.Services.Quartz
         {
             await _chargePointApiClient.StartChargingAsync(chargePointId, new StartChargingRequest { IgnoreDelay = true });
             session.Status = SessionStatus.Charging;
+            session.UpdatedTime = DateTime.Now;
             _context.Update(session);
             await _context.SaveChangesAsync();
 
@@ -48,6 +49,7 @@ namespace ECharge.Infrastructure.Services.Quartz
             var chargingSession = await _chargePointApiClient.GetChargingSessionsAsync(chargePointId);
             await _chargePointApiClient.StopChargingAsync(chargePointId, new StopChargingRequest { SessionId = chargingSession.SessionId });
             session.Status = SessionStatus.Complated;
+            session.UpdatedTime = DateTime.Now;
             _context.Update(session);
             await _context.SaveChangesAsync();
         }

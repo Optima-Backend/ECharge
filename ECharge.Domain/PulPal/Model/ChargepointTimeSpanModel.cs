@@ -1,3 +1,5 @@
+using System;
+
 namespace ECharge.Domain.PulPal.Model;
 
 public class ChargepointTimeSpanModel

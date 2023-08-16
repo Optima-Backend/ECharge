@@ -78,7 +78,6 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
             }
 
 
-
             return response;
         }
 

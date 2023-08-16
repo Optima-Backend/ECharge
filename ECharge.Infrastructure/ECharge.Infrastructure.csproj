@@ -22,6 +22,7 @@
     <None Remove="Services\CibPay\Certificate\" />
     <None Remove="Services\CibPay\Certificate\Api\" />
     <None Remove="Services\ChargePointActions\" />
+    <None Remove="Services\Quartz\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Services\" />
@@ -37,6 +38,7 @@
     <Folder Include="Services\CibPay\" />
     <Folder Include="Services\CibPay\Certificate\" />
     <Folder Include="Services\ChargePointActions\" />
+    <Folder Include="Services\Quartz\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ECharge.Domain\ECharge.Domain.csproj" />
@@ -53,6 +55,9 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.32.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="7.0.10" />
+    <PackageReference Include="Quartz" Version="3.7.0" />
+    <PackageReference Include="Quartz.Extensions.DependencyInjection" Version="3.7.0" />
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.7.0" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Services\CibPay\Certificate\Api\taxiapp.p12">

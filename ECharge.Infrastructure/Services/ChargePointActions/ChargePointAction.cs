@@ -1,7 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Net;
-using System.Threading.Tasks;
+﻿using System.Net;
 using ECharge.Domain.ChargePointActions.Interface;
 using ECharge.Domain.ChargePointActions.Model.CreateSession;
 using ECharge.Domain.CibPay.Interface;
@@ -9,7 +6,10 @@ using ECharge.Domain.CibPay.Model.CreateOrder.Command;
 using ECharge.Domain.Entities;
 using ECharge.Domain.Enums;
 using ECharge.Infrastructure.Services.DatabaseContext;
+using ECharge.Infrastructure.Services.Quartz;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Quartz;
 
 namespace ECharge.Infrastructure.Services.ChargePointActions
 {
@@ -17,12 +17,14 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
     {
         private readonly ICibPayService _cibPayService;
         private readonly DataContext _context;
+        private readonly IServiceProvider _serviceProvider;
         private const string CibPayBaseUrl = "https://checkout-preprod.cibpay.co/pay/";
 
-        public ChargePointAction(ICibPayService cibPayService, DataContext context)
+        public ChargePointAction(ICibPayService cibPayService, DataContext context, IServiceProvider serviceProvider)
         {
             _cibPayService = cibPayService;
             _context = context;
+            _serviceProvider = serviceProvider;
         }
 
         private PaymentStatus MapToPaymentStatus(string status)
@@ -76,7 +78,7 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
                         ChargerPointId = command.ChargePointId,
                         Duration = totalMinutes,
                         StartDate = command.PlannedStartDate,
-                        EndDate = command.PlannedStartDate,
+                        EndDate = command.PlannedEndDate,
                         PricePerHour = serviceFee,
                         Status = SessionStatus.NotCharging,
                         Transaction = transactionEntity
@@ -125,6 +127,17 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
                 _context.Transactions.Update(transaction);
 
                 await _context.SaveChangesAsync();
+
+                var session = _context.Sessions.FirstOrDefault(x => x.TransactionId == transaction.Id);
+
+                if (providerResponse.Data.Orders.FirstOrDefault().Status == "new")
+                {
+                    var factory = _serviceProvider.GetRequiredService<ISchedulerFactory>();
+                    var scheduler = await factory.GetScheduler();
+
+                    var scheduleJobs = new ScheduleJobs(scheduler);
+                    await scheduleJobs.ScheduleJob(session.StartDate, session.EndDate, session.ChargerPointId);
+                }
             }
         }
 

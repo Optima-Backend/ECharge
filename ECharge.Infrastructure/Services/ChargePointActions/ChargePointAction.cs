@@ -49,7 +49,7 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
 
         public async Task<object> GenerateLink(CreateSessionCommand command)
         {
-            var serviceFee = 5;
+            const int serviceFee = 5;
             var totalMinutes = (int)(command.PlannedEndDate - command.PlannedStartDate).TotalMinutes;
             var amount = Math.Round(totalMinutes / 60.0, 2) * serviceFee;
 
@@ -57,7 +57,7 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
 
             if (orderProviderResponse.StatusCode == HttpStatusCode.Created && orderProviderResponse.Data.Orders.Any())
             {
-                using var transaction = await _context.Database.BeginTransactionAsync();
+                await using var transaction = await _context.Database.BeginTransactionAsync();
 
                 try
                 {
@@ -104,10 +104,8 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
                     return new { StatusCode = HttpStatusCode.InternalServerError, Message = ex.Message };
                 }
             }
-            else
-            {
-                return new { StatusCode = HttpStatusCode.NotFound, Message = "Something went wrong on Creating Order" };
-            }
+
+            return new { StatusCode = HttpStatusCode.NotFound, Message = "Something went wrong on Creating Order" };
         }
 
         public async Task PaymentHandler(string orderId)

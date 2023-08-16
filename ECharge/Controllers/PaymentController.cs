@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ECharge.Domain.ChargePointActions.Interface;
 using ECharge.Domain.ChargePointActions.Model.CreateSession;
+using ECharge.Domain.ErrorModels;
 
 namespace ECharge.Api.Controllers
 {
@@ -15,25 +16,48 @@ namespace ECharge.Api.Controllers
 
         [Route("/api/echarge/generatelink")]
         [HttpPost]
-        public async Task<object> GenerateLink(CreateSessionCommand command)
+        public async Task<ActionResult<object>> GenerateLink(CreateSessionCommand command)
         {
-            ////|| command.PlannedStartDate <= DateTime.Now || command.PlannedEndDate <= DateTime.Now
-            //if (command.PlannedStartDate >= command.PlannedEndDate)
-            //{
-            //    throw new Exception("Start date can not be larger than End date");
-            //}
+            if (command.PlannedStartDate >= command.PlannedEndDate)
+            {
 
-            //if(command.PlannedStartDate <= DateTime.Now)
-            //{
-            //    throw new Exception("Start date exceeds");
-            //}
+              return  BadRequest(
+                    new ErrorModel
+                {
+                    StatusCode = 400,
+                    Message = "Start date can't be bigger than end date"
+                });
 
-            //if(command.PlannedEndDate <= DateTime.Now)
-            //{
+            }
+            
 
-            //}
+            if(command.PlannedStartDate <= DateTime.Now)
+            {
+               return BadRequest(new ErrorModel
+                {
+                    StatusCode = 400,
+                    Message = "Start date exceeds. Make sure it is beyond than current date"
+                }); 
+            }
 
-            //if(command.PlannedEndDate - command.PlannedStartDate)
+            if(command.PlannedEndDate <= DateTime.Now)
+            {
+               return BadRequest(
+                 new ErrorModel
+                {
+                    StatusCode = 400,
+                    Message = "End date exceeds. Make sure it is beyond than current date"
+                });
+            }
+
+            if ((command.PlannedEndDate - command.PlannedStartDate).TotalMinutes < 2)
+            {
+                return BadRequest(new ErrorModel
+                {
+                    StatusCode = 400,
+                    Message = "The Charging time span must be at least 10 minutes"
+                });
+            }
 
             return await _chargePointAction.GenerateLink(command);
         }

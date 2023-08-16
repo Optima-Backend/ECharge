@@ -8,12 +8,9 @@ public class CertificatePath
 
     public CertificatePath()
     {
-        var certificatePath = "ECharge.Infrastructure/Services/CibPay/Certificate/Api/taxiapp.p12";
+        var assemblyFolder = Assembly.GetExecutingAssembly().Location;
+        var certificatePath = Path.Combine(Path.GetDirectoryName(assemblyFolder), "Services/CibPay/Certificate/Api/taxiapp.p12");
 
-        var root = Directory.GetCurrentDirectory();
-        
-        var currentDirectory = Path.Combine(root[..^8] ,certificatePath);
-        
-        CurrentPath = currentDirectory;
+        CurrentPath = certificatePath;
     }
 }

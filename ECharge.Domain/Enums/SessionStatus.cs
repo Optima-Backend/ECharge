@@ -5,5 +5,6 @@ public enum SessionStatus
     NotCharging,
     Charging,
     FullyCharged,
-    
+    Complated
+
 }

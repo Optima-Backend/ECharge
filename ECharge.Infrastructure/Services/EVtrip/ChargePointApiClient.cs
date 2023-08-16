@@ -1,5 +1,4 @@
-﻿using System.Net;
-using ECharge.Domain.EVtrip.DTOs.Requests;
+﻿using ECharge.Domain.EVtrip.DTOs.Requests;
 using ECharge.Domain.EVtrip.DTOs.Responses;
 using ECharge.Domain.EVtrip.Interfaces;
 using ECharge.Domain.EVtrip.Models;
@@ -72,7 +71,7 @@ namespace ECharge.Infrastructure.Services.EVtrip
         {
             try
             {
-                using var authorizedClient = await GetAuthorizedHttpClientAsync();
+                var authorizedClient = await GetAuthorizedHttpClientAsync();
 
                 HttpResponseMessage response = await authorizedClient.GetAsync("/api/external/cpo/v1/chargepoint/");
                 response.EnsureSuccessStatusCode();
@@ -92,7 +91,7 @@ namespace ECharge.Infrastructure.Services.EVtrip
         {
             try
             {
-                using var authorizedClient = await GetAuthorizedHttpClientAsync();
+                var authorizedClient = await GetAuthorizedHttpClientAsync();
 
                 HttpResponseMessage response =
                     await authorizedClient.GetAsync(
@@ -116,7 +115,7 @@ namespace ECharge.Infrastructure.Services.EVtrip
         {
             try
             {
-                using var authorizedClient = await GetAuthorizedHttpClientAsync();
+                var authorizedClient = await GetAuthorizedHttpClientAsync();
 
                 OperationResult<ChargePoint> singlePointResult = new();
 
@@ -153,7 +152,7 @@ namespace ECharge.Infrastructure.Services.EVtrip
         {
             try
             {
-                using var authorizedClient = await GetAuthorizedHttpClientAsync();
+                var authorizedClient = await GetAuthorizedHttpClientAsync();
 
                 string requestJson = JsonConvert.SerializeObject(request);
 
@@ -183,8 +182,8 @@ namespace ECharge.Infrastructure.Services.EVtrip
         {
             try
             {
-                using var authorizedClient = await GetAuthorizedHttpClientAsync();
-                
+                var authorizedClient = await GetAuthorizedHttpClientAsync();
+
                 string requestJson = JsonConvert.SerializeObject(request);
 
                 var content = new StringContent(requestJson, Encoding.UTF8, "application/json");

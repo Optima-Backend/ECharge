@@ -17,6 +17,24 @@ namespace ECharge.Api.Controllers
         [HttpPost]
         public async Task<object> GenerateLink(CreateSessionCommand command)
         {
+            ////|| command.PlannedStartDate <= DateTime.Now || command.PlannedEndDate <= DateTime.Now
+            //if (command.PlannedStartDate >= command.PlannedEndDate)
+            //{
+            //    throw new Exception("Start date can not be larger than End date");
+            //}
+
+            //if(command.PlannedStartDate <= DateTime.Now)
+            //{
+            //    throw new Exception("Start date exceeds");
+            //}
+
+            //if(command.PlannedEndDate <= DateTime.Now)
+            //{
+
+            //}
+
+            //if(command.PlannedEndDate - command.PlannedStartDate)
+
             return await _chargePointAction.GenerateLink(command);
         }
 

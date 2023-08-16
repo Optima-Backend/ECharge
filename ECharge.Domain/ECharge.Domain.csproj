@@ -49,6 +49,8 @@
     <None Remove="ChargePointActions\Model\" />
     <None Remove="ChargePointActions\Model\CreateSession\" />
     <None Remove="ChargePointActions\Model\CreateTransaction\" />
+    <None Remove="Job\" />
+    <None Remove="Job\Interface\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="EVtrip\" />
@@ -92,6 +94,8 @@
     <Folder Include="ChargePointActions\Model\" />
     <Folder Include="ChargePointActions\Model\CreateSession\" />
     <Folder Include="ChargePointActions\Model\CreateTransaction\" />
+    <Folder Include="Job\" />
+    <Folder Include="Job\Interface\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

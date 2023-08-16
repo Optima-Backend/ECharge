@@ -1,4 +1,3 @@
-//using System.Threading.Tasks;
 //using ECharge.Domain.EVtrip.DTOs.Requests;
 //using ECharge.Domain.EVtrip.DTOs.Responses;
 //using ECharge.Domain.EVtrip.Interfaces;
@@ -29,9 +28,9 @@
 //    [HttpGet]
 //    public async Task<ActionResult<OperationResult<ChargePoint>>> GetSingleChargePoint(string id)
 //    {
-//      var singleChargePoint = await _chargePointApi.GetSingleChargerAsync(id);
+//        var singleChargePoint = await _chargePointApi.GetSingleChargerAsync(id);
 
-//      return Ok(singleChargePoint);
+//        return Ok(singleChargePoint);
 //    }
 
 //    [HttpGet]

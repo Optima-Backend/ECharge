@@ -19,65 +19,67 @@ using Quartz;
 using Quartz.Impl;
 using Quartz.Logging;
 
-namespace ECharge.Infrastructure
+namespace ECharge.Infrastructure;
+
+public static class DependencyInjection
 {
-    public static class DependencyInjection
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+        var cnnString = configuration.GetConnectionString("OrkhanServer");
+
+        services.AddScoped((x) => new DataContext(cnnString));
+
+        services.AddScoped<IChargeSession, ChargeSession>();
+
+        LogProvider.SetCurrentLogProvider(new ConsoleLogProvider());
+
+        services.AddQuartzHostedService();
+
+        services.AddQuartz(x =>
         {
-            services.AddSingleton<DataContext>();
-            services.AddScoped<IChargeSession, ChargeSession>();
+            x.UseInMemoryStore();
+            x.UseDefaultThreadPool(10);
+        });
 
-            LogProvider.SetCurrentLogProvider(new ConsoleLogProvider());
+        services.AddSingleton<IJwtService, JwtService>();
 
-            services.AddQuartzHostedService();
+        services.AddScoped<IChargePointApiClient, ChargePointApiClient>();
 
-            services.AddQuartz(x =>
+        services.AddScoped<ICibPayService, CibPayService>();
+
+        services.AddScoped<IChargePointAction, ChargePointAction>();
+
+        var jwtSettings = configuration.GetSection("JwtSettings");
+        var secretKey = jwtSettings["SecretKey"];
+        var issuer = jwtSettings["Issuer"];
+        var audience = jwtSettings["Audience"];
+        var key = Encoding.ASCII.GetBytes(secretKey);
+
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.RequireHttpsMetadata = false;
+            options.SaveToken = true;
+            options.TokenValidationParameters = new TokenValidationParameters
             {
-                x.UseInMemoryStore();
-                x.UseDefaultThreadPool(10);
-            });
-
-            services.AddSingleton<IJwtService, JwtService>();
-
-            services.AddHttpClient<IChargePointApiClient, ChargePointApiClient>();
-
-            services.AddScoped<ICibPayService, CibPayService>();
-
-            services.AddScoped<IChargePointAction, ChargePointAction>();
-
-            var jwtSettings = configuration.GetSection("JwtSettings");
-            var secretKey = jwtSettings["SecretKey"];
-            var issuer = jwtSettings["Issuer"];
-            var audience = jwtSettings["Audience"];
-            var key = Encoding.ASCII.GetBytes(secretKey);
-
-            services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(options =>
-            {
-                options.RequireHttpsMetadata = false;
-                options.SaveToken = true;
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ValidateIssuer = true,
-                    ValidIssuer = issuer,
-                    ValidateAudience = true,
-                    ValidAudience = audience,
-                    ClockSkew = TimeSpan.Zero
-                };
-            });
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(key),
+                ValidateIssuer = true,
+                ValidIssuer = issuer,
+                ValidateAudience = true,
+                ValidAudience = audience,
+                ClockSkew = TimeSpan.Zero
+            };
+        });
 
 
-            return services;
-        }
-
+        return services;
     }
+
 }
 
 

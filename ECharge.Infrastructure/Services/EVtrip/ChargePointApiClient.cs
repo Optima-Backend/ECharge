@@ -19,7 +19,14 @@ namespace ECharge.Infrastructure.Services.EVtrip
 
         public ChargePointApiClient(HttpClient httpClient)
         {
-            _httpClient = httpClient;
+            var handler = new HttpClientHandler();
+            handler.ClientCertificateOptions = ClientCertificateOption.Manual;
+            handler.ServerCertificateCustomValidationCallback = (httpRequestMessage, cert, certChain, policyErrors) =>
+            {
+                return true;
+            };
+
+            _httpClient = new HttpClient(handler);
             _httpClient.BaseAddress = new Uri(BaseUrl);
             _httpClient.DefaultRequestHeaders.Accept.Clear();
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -170,7 +177,7 @@ namespace ECharge.Infrastructure.Services.EVtrip
 
                 return result;
             }
-            catch (HttpRequestException ex)
+            catch (Exception ex)
             {
                 //TODO - Log və exception'ları burada handle etmək!
                 throw new Exception("API isteği başarısız oldu: " + ex.Message);

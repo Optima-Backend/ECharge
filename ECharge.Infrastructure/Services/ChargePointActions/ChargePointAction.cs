@@ -124,13 +124,21 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
 
                 transaction.Status = paymentStatus;
 
-                _context.Transactions.Update(transaction);
+                transaction.UpdatedDate = DateTime.Now;
 
-                await _context.SaveChangesAsync();
+                //_context.Transactions.Update(transaction);
 
                 var session = _context.Sessions.FirstOrDefault(x => x.TransactionId == transaction.Id);
 
-                if (providerResponse.Data.Orders.FirstOrDefault().Status == "new")
+                var diff = transaction.UpdatedDate.Value - session.StartDate;
+
+                session.EndDate += diff;
+                session.StartDate += diff;
+
+                await _context.SaveChangesAsync();
+
+
+                if (providerResponse.Data.Orders.FirstOrDefault().Status == "charged")
                 {
                     var factory = _serviceProvider.GetRequiredService<ISchedulerFactory>();
                     var scheduler = await factory.GetScheduler();

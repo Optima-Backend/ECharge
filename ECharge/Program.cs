@@ -21,7 +21,7 @@ internal class Program
         builder.Services.AddInfrastructure(configuration);
 
         builder.Services.AddControllers();
-        
+
 
         builder.Services.AddSwaggerGen(c =>
         {

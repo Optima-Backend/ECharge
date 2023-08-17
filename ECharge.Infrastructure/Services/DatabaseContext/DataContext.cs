@@ -5,16 +5,16 @@ namespace ECharge.Infrastructure.Services.DatabaseContext;
 
 public class DataContext : DbContext
 {
+    private readonly string _connectionString;
 
-    public DataContext()
+    public DataContext(string connectionString)
     {
-
+        _connectionString = connectionString;
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseSqlServer("Server=localhost,1433;Database=ECharge;Trusted_Connection=False;User=SA;Password=87arMWD5;TrustServerCertificate=True");
-        //optionsBuilder.UseSqlServer("Server=localhost,1433; Database=ECharger;Trusted_Connection=False;User=sa;Password=M0yEjlpWMulVkvc;TrustServerCertificate=True");
+        optionsBuilder.UseSqlServer(_connectionString);
     }
 
     public DbSet<Transaction> Transactions { get; set; }

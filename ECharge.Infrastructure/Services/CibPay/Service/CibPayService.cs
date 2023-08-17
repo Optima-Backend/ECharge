@@ -11,6 +11,7 @@ using ECharge.Domain.CibPay.Model.Ping.Response;
 using ECharge.Domain.CibPay.Model.RefundOrder.Command;
 using ECharge.Domain.CibPay.Model.BaseResponse;
 using ECharge.Infrastructure.Services.CibPay.Certificate.Api;
+using static System.Net.WebRequestMethods;
 
 namespace ECharge.Infrastructure.Services.CibPay.Service
 {
@@ -44,6 +45,7 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
         private async Task<CibBaseResponse<T>> SendRequestAsync<T>(string endpoint, HttpMethod method, object requestData = null)
         {
             using var handler = new HttpClientHandler { ClientCertificates = { _clientCertificate } };
+
             using var httpClientWithCertificate = new HttpClient(handler);
             httpClientWithCertificate.BaseAddress = _httpClient.BaseAddress;
             httpClientWithCertificate.DefaultRequestHeaders.Authorization = _httpClient.DefaultRequestHeaders.Authorization;
@@ -99,7 +101,7 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
                         expiration_timeout = string.IsNullOrEmpty(command.ExpirationTimeout) ? "4320m" : command.ExpirationTimeout,
                         force3d = command.Force3d ?? 1,
                         language = string.IsNullOrEmpty(command.Language) ? "az" : command.Language,
-                        //https://localhost:7268/api/echarge/payment-redirect-url
+                        //http://4.193.153.177:4444/api/echarge/payment-redirect-url
                         return_url = string.IsNullOrEmpty(command.ReturnUrl) ? "https://google.com" : command.ReturnUrl
                     },
                     client = new

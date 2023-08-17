@@ -21,33 +21,31 @@ namespace ECharge.Api.Controllers
             if (command.PlannedStartDate >= command.PlannedEndDate)
             {
 
-              return  BadRequest(
-                    new ErrorModel
-                {
-                    StatusCode = 400,
-                    Message = "Start date can't be bigger than end date"
-                });
-
+                return BadRequest(
+                      new ErrorModel
+                      {
+                          StatusCode = 400,
+                          Message = "Start date can't be bigger than end date"
+                      });
             }
-            
 
-            if(command.PlannedStartDate <= DateTime.Now)
+            if (command.PlannedStartDate <= DateTime.Now)
             {
-               return BadRequest(new ErrorModel
+                return BadRequest(new ErrorModel
                 {
                     StatusCode = 400,
                     Message = "Start date exceeds. Make sure it is beyond than current date"
-                }); 
+                });
             }
 
-            if(command.PlannedEndDate <= DateTime.Now)
+            if (command.PlannedEndDate <= DateTime.Now)
             {
-               return BadRequest(
-                 new ErrorModel
-                {
-                    StatusCode = 400,
-                    Message = "End date exceeds. Make sure it is beyond than current date"
-                });
+                return BadRequest(
+                  new ErrorModel
+                  {
+                      StatusCode = 400,
+                      Message = "End date exceeds. Make sure it is beyond from current date"
+                  });
             }
 
             if ((command.PlannedEndDate - command.PlannedStartDate).TotalMinutes < 2)
@@ -55,7 +53,7 @@ namespace ECharge.Api.Controllers
                 return BadRequest(new ErrorModel
                 {
                     StatusCode = 400,
-                    Message = "The Charging time span must be at least 10 minutes"
+                    Message = "The Charging time span must be at least 30 minutes"
                 });
             }
 

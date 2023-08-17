@@ -1,7 +1,10 @@
-namespace ECharge.Domain.ErrorModels;
-
-public class ErrorModel
+﻿using System;
+namespace ECharge.Domain.ErrorModels
 {
-    public int StatusCode { get; set; }
-    public string Message { get; set; }
+    public class ErrorModel
+    {
+        public int StatusCode { get; set; }
+        public string Message { get; set; }
+    }
 }
+

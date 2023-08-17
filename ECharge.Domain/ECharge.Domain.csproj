@@ -51,6 +51,7 @@
     <None Remove="ChargePointActions\Model\CreateTransaction\" />
     <None Remove="Job\" />
     <None Remove="Job\Interface\" />
+    <None Remove="ErrorModels\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="EVtrip\" />
@@ -96,6 +97,7 @@
     <Folder Include="ChargePointActions\Model\CreateTransaction\" />
     <Folder Include="Job\" />
     <Folder Include="Job\Interface\" />
+    <Folder Include="ErrorModels\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

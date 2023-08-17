@@ -14,7 +14,7 @@ namespace ECharge.Infrastructure.Services.Quartz
 
         public async Task ScheduleJob(DateTime startDate, DateTime endDate, string chargePointId)
         {
-            var diff = endDate.AddSeconds(-1) - startDate;
+            var diff = endDate.AddSeconds(-10) - startDate.AddSeconds(10);
 
             IJobDetail job = JobBuilder.Create<CustomJob>()
                 .WithIdentity("customJob", "group1")

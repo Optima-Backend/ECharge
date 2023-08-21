@@ -1,10 +1,13 @@
 ﻿using System.Net;
 using ECharge.Domain.ChargePointActions.Interface;
 using ECharge.Domain.ChargePointActions.Model.CreateSession;
+using ECharge.Domain.ChargePointActions.Model.PaymentStatus;
 using ECharge.Domain.CibPay.Interface;
+using ECharge.Domain.CibPay.Model;
 using ECharge.Domain.CibPay.Model.CreateOrder.Command;
 using ECharge.Domain.Entities;
 using ECharge.Domain.Enums;
+using ECharge.Domain.EVtrip.Interfaces;
 using ECharge.Infrastructure.Services.DatabaseContext;
 using ECharge.Infrastructure.Services.Quartz;
 using Microsoft.EntityFrameworkCore;
@@ -18,13 +21,15 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
         private readonly ICibPayService _cibPayService;
         private readonly DataContext _context;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IChargePointApiClient _chargePointApiClient;
         private const string CibPayBaseUrl = "https://checkout-preprod.cibpay.co/pay/";
 
-        public ChargePointAction(ICibPayService cibPayService, DataContext context, IServiceProvider serviceProvider)
+        public ChargePointAction(ICibPayService cibPayService, DataContext context, IServiceProvider serviceProvider, IChargePointApiClient chargePointApiClient)
         {
             _cibPayService = cibPayService;
             _context = context;
             _serviceProvider = serviceProvider;
+            _chargePointApiClient = chargePointApiClient;
         }
 
         private PaymentStatus MapToPaymentStatus(string status)
@@ -49,11 +54,19 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
 
         public async Task<object> GenerateLink(CreateSessionCommand command)
         {
-            var serviceFee = 5;
-            var totalMinutes = (int)(command.PlannedEndDate - command.PlannedStartDate).TotalMinutes;
-            var amount = Math.Round(totalMinutes / 60.0, 2) * serviceFee;
+            var currentSession = await _chargePointApiClient.GetChargingSessionsAsync(command.ChargePointId);
 
-            var orderProviderResponse = await _cibPayService.CreateOrder(new CreateOrderCommand { Amount = amount });
+            if (currentSession is not null)
+            {
+                return new { StatusCode = HttpStatusCode.BadRequest, Message = "This charge point is currently busy" };
+            }
+
+            var totalMinutes = (int)(command.PlannedEndDate - command.PlannedStartDate).TotalMinutes;
+            var amount = Math.Round(totalMinutes / 60.0m, 2) * command.Price;
+            amount = Math.Round(amount, 2);
+            var sessionId = Guid.NewGuid().ToString();
+
+            var orderProviderResponse = await _cibPayService.CreateOrder(new CreateOrderCommand { Amount = amount, UserId = command.UserId, ChargePointId = command.ChargePointId, MerchantOrderId = sessionId, Name = command.Name, Email = command.Email });
 
             if (orderProviderResponse.StatusCode == HttpStatusCode.Created && orderProviderResponse.Data.Orders.Any())
             {
@@ -61,29 +74,49 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
 
                 try
                 {
-                    var orderId = orderProviderResponse.Data.Orders.First().Id;
+                    var providerOrder = orderProviderResponse.Data.Orders.First();
+
+                    var orderEntity = new Order
+                    {
+                        OrderId = providerOrder.Id,
+                        Amount = providerOrder.Amount,
+                        AmountCharged = providerOrder.AmountCharged,
+                        AmountRefunded = providerOrder.AmountRefunded,
+                        Currency = providerOrder.Currency,
+                        Description = providerOrder.Description,
+                        Status = MapToPaymentStatus(providerOrder.Status),
+                        MerchantOrderId = providerOrder.MerchantOrderId,
+                        Pan = providerOrder.Pan,
+                        Created = providerOrder.Created,
+                        Updated = providerOrder.Updated
+                    };
+
+                    await _context.Orders.AddAsync(orderEntity);
 
                     var transactionEntity = new Transaction
                     {
-                        Link = CibPayBaseUrl + orderId,
-                        OrderId = orderId,
+                        Order = orderEntity,
                         CreatedDate = DateTime.Now,
                         Status = PaymentStatus.New
                     };
 
-                    _context.Transactions.Add(transactionEntity);
+                    await _context.Transactions.AddAsync(transactionEntity);
 
                     var sessionEntity = new Session
                     {
+                        Id = sessionId,
+                        UserId = command.UserId,
+                        Name = command.Name,
+                        Email = command.Email,
                         ChargerPointId = command.ChargePointId,
                         Duration = totalMinutes,
                         StartDate = command.PlannedStartDate,
                         EndDate = command.PlannedEndDate,
-                        PricePerHour = serviceFee,
+                        PricePerHour = command.Price,
                         Status = SessionStatus.NotCharging,
                         Transaction = transactionEntity
                     };
-                    _context.Sessions.Add(sessionEntity);
+                    await _context.Sessions.AddAsync(sessionEntity);
 
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
@@ -92,10 +125,11 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
                     {
                         StatusCode = HttpStatusCode.Created,
                         Amount = amount,
-                        PaymentUrl = transactionEntity.Link,
-                        OrderId = orderId,
-                        ChargePointId = command.ChargePointId,
-                        DurationMins = totalMinutes
+                        PaymentUrl = CibPayBaseUrl + providerOrder.Id,
+                        OrderId = providerOrder.Id,
+                        command.ChargePointId,
+                        DurationMins = totalMinutes,
+                        Message = string.Empty
                     };
                 }
                 catch (Exception ex)
@@ -116,27 +150,32 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
 
             if (providerResponse.StatusCode == HttpStatusCode.OK && providerResponse.Data.Orders.Any())
             {
-                var transaction = await _context.Transactions.FirstOrDefaultAsync(x => x.OrderId == orderId);
+                var transaction = await _context.Transactions.Include(x => x.Order).FirstOrDefaultAsync(x => x.Order.OrderId == orderId);
 
+                var providerOrder = providerResponse.Data.Orders.First();
                 string status = providerResponse.Data.Orders.First().Status;
 
                 var paymentStatus = MapToPaymentStatus(status);
 
+                transaction.Order.AmountCharged = providerOrder.AmountCharged;
+                transaction.Order.AmountRefunded = providerOrder.AmountRefunded;
+                transaction.Order.Status = paymentStatus;
+                transaction.Order.Description = providerOrder.Description;
+                transaction.Order.MerchantOrderId = providerOrder.MerchantOrderId;
+                transaction.Order.Pan = providerOrder.Pan;
+                transaction.UpdatedDate = providerOrder.Updated;
                 transaction.Status = paymentStatus;
-
-                transaction.UpdatedDate = DateTime.Now;
-
-                //_context.Transactions.Update(transaction);
 
                 var session = _context.Sessions.FirstOrDefault(x => x.TransactionId == transaction.Id);
 
-                var diff = transaction.UpdatedDate.Value - session.StartDate;
+                var duration = (int)(session.EndDate - session.StartDate).TotalMinutes;
+                session.StartDate = DateTime.Now.AddMinutes(1);
+                session.EndDate = session.StartDate.AddMinutes(duration + 1);
+                session.Duration = (int)(session.EndDate - session.StartDate).TotalMinutes;
 
-                session.EndDate += diff;
-                session.StartDate += diff;
+                _context.Sessions.Update(session);
 
                 await _context.SaveChangesAsync();
-
 
                 if (providerResponse.Data.Orders.FirstOrDefault().Status == "charged")
                 {
@@ -144,23 +183,94 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
                     var scheduler = await factory.GetScheduler();
 
                     var scheduleJobs = new ScheduleJobs(scheduler);
-                    await scheduleJobs.ScheduleJob(session.StartDate, session.EndDate, session.ChargerPointId);
+                    await scheduleJobs.ScheduleJob(session.StartDate, session.EndDate, session.ChargerPointId, session.Id);
                 }
             }
         }
 
-        public async Task<object> GetPaymentStatus(string orderId)
+        public async Task<PaymentStatusResponse> GetPaymentStatus(string orderId)
         {
-            if (!await _context.Transactions.AnyAsync(x => x.OrderId == orderId))
+            if (!await _context.Transactions.Include(x => x.Order).AnyAsync(x => x.Order.OrderId == orderId))
+            {
+                return new PaymentStatusResponse
+                {
+                    Message = "Payment trasnaction not found",
+                    StatusCode = HttpStatusCode.NotFound
+                };
+            }
+
+            var session = await _context.Sessions.Include(x => x.Transaction).ThenInclude(x => x.Order).FirstOrDefaultAsync(x => x.Transaction.Order.OrderId == orderId);
+            var providerResponse = await _cibPayService.GetOrderInfo(orderId);
+
+            SingleOrderResponse orderResponse = default;
+
+            if (providerResponse.StatusCode == HttpStatusCode.OK && providerResponse.Data.Orders.Any())
+                orderResponse = providerResponse.Data.Orders.FirstOrDefault();
+
+            return new PaymentStatusResponse
+            {
+                Session = session,
+                StatusCode = HttpStatusCode.OK,
+                Message = "Founded trasnaction",
+                SingleOrderResponse = orderResponse
+            };
+        }
+
+        public async Task<object> GetSessionStatus(string orderId)
+        {
+            if (!await _context.Transactions.Include(x => x.Order).AnyAsync(x => x.Order.OrderId == orderId))
             {
                 return new
                 {
                     StatusCode = HttpStatusCode.NotFound,
-                    Message = "Payment trasnaction not found"
+                    Message = "Session not found"
                 };
             }
 
-            return _context.Transactions.FirstOrDefault(x => x.OrderId == orderId);
+            var session = await _context.Sessions.Include(x => x.Transaction).ThenInclude(x => x.Order).FirstOrDefaultAsync(x => x.Transaction.Order.OrderId == orderId);
+
+            if (session.Status == SessionStatus.Charging)
+            {
+                var duration = session.EndDate.AddSeconds(-10) - session.StartDate;
+                var remainingTime = session.EndDate.AddSeconds(-10) - DateTime.Now;
+                remainingTime = remainingTime.TotalMilliseconds > 0 ? remainingTime : default;
+
+                return new
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    RemainingTime = remainingTime,
+                    StartingTime = session.StartDate,
+                    EndTime = session.EndDate.AddSeconds(-10),
+                    Duration = duration,
+                    ChargingStatus = "Charging",
+                    Message = "Session is active. Vehicle is charging",
+                };
+            }
+            else if (session.Status == SessionStatus.NotCharging || session.Status == SessionStatus.Complated)
+            {
+                var duration = session.EndDate.AddSeconds(-10) - session.StartDate;
+                TimeSpan remainingTime = default;
+                string chargingStatus = session.Status == SessionStatus.NotCharging ? "NotCharging" : "Complated";
+                string message = session.Status == SessionStatus.NotCharging ? "Session will start at starting time" : "Session has complated";
+
+                return new
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    RemainingTime = remainingTime,
+                    StartingTime = session.StartDate,
+                    EndTime = session.EndDate.AddSeconds(-10),
+                    Duration = duration,
+                    ChargingStatus = chargingStatus,
+                    Message = message
+                };
+            }
+
+            return new
+            {
+                StatusCode = HttpStatusCode.NotFound,
+                Message = "Something went wrong"
+            };
+
         }
     }
 }

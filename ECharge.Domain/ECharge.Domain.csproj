@@ -52,6 +52,8 @@
     <None Remove="Job\" />
     <None Remove="Job\Interface\" />
     <None Remove="ErrorModels\" />
+    <None Remove="ChargePointActions\Model\PaymentStatus\" />
+    <None Remove="DTOs\CibPay\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="EVtrip\" />
@@ -98,6 +100,8 @@
     <Folder Include="Job\" />
     <Folder Include="Job\Interface\" />
     <Folder Include="ErrorModels\" />
+    <Folder Include="ChargePointActions\Model\PaymentStatus\" />
+    <Folder Include="DTOs\CibPay\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

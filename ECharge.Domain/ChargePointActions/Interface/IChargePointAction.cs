@@ -1,4 +1,5 @@
 ﻿using ECharge.Domain.ChargePointActions.Model.CreateSession;
+using ECharge.Domain.ChargePointActions.Model.PaymentStatus;
 
 namespace ECharge.Domain.ChargePointActions.Interface
 {
@@ -6,7 +7,8 @@ namespace ECharge.Domain.ChargePointActions.Interface
     {
         Task<object> GenerateLink(CreateSessionCommand command);
         Task PaymentHandler(string orderId);
-        Task<object> GetPaymentStatus(string orderId);
+        Task<PaymentStatusResponse> GetPaymentStatus(string orderId);
+        Task<object> GetSessionStatus(string orderId);
     }
 }
 

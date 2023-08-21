@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
 using ECharge.Domain.ChargePointActions.Interface;
 using ECharge.Domain.CibPay.Interface;
 using ECharge.Domain.EVtrip.Interfaces;
@@ -16,7 +15,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Quartz;
-using Quartz.Impl;
 using Quartz.Logging;
 
 namespace ECharge.Infrastructure;
@@ -26,8 +24,10 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         var cnnString = configuration.GetConnectionString("OrkhanServer");
-
+        //var cnnString = configuration.GetConnectionString("Default");
         services.AddScoped((x) => new DataContext(cnnString));
+
+        //services.AddScoped<DataContext>();
 
         services.AddScoped<IChargeSession, ChargeSession>();
 

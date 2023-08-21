@@ -7,10 +7,11 @@ namespace ECharge.Domain.Entities;
 [Table("ChargePointSession")]
 public class Session
 {
-    public int Id { get; set; }
+    [Key]
+    public string Id { get; set; }
 
     [Required]
-    public required string ChargerPointId { get; set; }
+    public string ChargerPointId { get; set; }
 
     [Required]
     public DateTime StartDate { get; set; }
@@ -22,7 +23,7 @@ public class Session
     public int Duration { get; set; }
 
     [Required]
-    public int PricePerHour { get; set; }
+    public decimal PricePerHour { get; set; }
 
     public int TransactionId { get; set; }
 
@@ -33,4 +34,9 @@ public class Session
 
     public DateTime? UpdatedTime { get; set; }
 
+    public string UserId { get; set; }
+
+    public string Name { get; set; }
+
+    public string Email { get; set; }
 }

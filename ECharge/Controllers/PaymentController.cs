@@ -18,6 +18,9 @@ namespace ECharge.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<object>> GenerateLink(CreateSessionCommand command)
         {
+            var startTime = new DateTime(command.PlannedStartDate.Year, command.PlannedStartDate.Month, command.PlannedStartDate.Day, command.PlannedStartDate.Hour, command.PlannedStartDate.Minute, 0);
+            var endTime = new DateTime(command.PlannedEndDate.Year, command.PlannedEndDate.Month, command.PlannedEndDate.Day, command.PlannedEndDate.Hour, command.PlannedEndDate.Minute, 0);
+
             if (command.PlannedStartDate >= command.PlannedEndDate)
             {
 
@@ -25,16 +28,16 @@ namespace ECharge.Api.Controllers
                       new ErrorModel
                       {
                           StatusCode = 400,
-                          Message = "Start date can't be bigger than end date"
+                          Message = "Start time should be less than end time"
                       });
             }
 
-            if (command.PlannedStartDate <= DateTime.Now)
+            if (command.PlannedStartDate < DateTime.Now)
             {
                 return BadRequest(new ErrorModel
                 {
                     StatusCode = 400,
-                    Message = "Start date exceeds. Make sure it is beyond than current date"
+                    Message = "Start time exceeds. Make sure it is beyond than current time"
                 });
             }
 
@@ -44,16 +47,16 @@ namespace ECharge.Api.Controllers
                   new ErrorModel
                   {
                       StatusCode = 400,
-                      Message = "End date exceeds. Make sure it is beyond from current date"
+                      Message = "End time exceeds. Make sure it is beyond from current time"
                   });
             }
 
-            if ((command.PlannedEndDate - command.PlannedStartDate).TotalMinutes < 2)
+            if ((command.PlannedEndDate - command.PlannedStartDate).TotalMinutes < 10)
             {
                 return BadRequest(new ErrorModel
                 {
                     StatusCode = 400,
-                    Message = "The Charging time span must be at least 30 minutes"
+                    Message = "The Charging time span must be at least 10 minutes"
                 });
             }
 
@@ -62,16 +65,20 @@ namespace ECharge.Api.Controllers
 
         [Route("/api/echarge/payment-redirect-url")]
         [HttpGet]
-        public async Task RedirectUrl(string order_id)
+        public async Task<IActionResult> RedirectUrl(string order_id)
         {
             await _chargePointAction.PaymentHandler(order_id);
+
+            var paymentStatus = await _chargePointAction.GetPaymentStatus(order_id);
+
+            return View(paymentStatus);
         }
 
-        [Route("/api/echarge/get-payment-status")]
+        [Route("/api/echarge/get-session-status")]
         [HttpGet]
-        public async Task<object> GetPaymentStatus(string orderId)
+        public async Task<object> GetSessionStatus(string orderId)
         {
-            return await _chargePointAction.GetPaymentStatus(orderId);
+            return await _chargePointAction.GetSessionStatus(orderId);
         }
     }
 }

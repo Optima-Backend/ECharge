@@ -1,10 +1,4 @@
-﻿using System;
-using ECharge.Infrastructure;
-using ECharge.Infrastructure.Services.DatabaseContext;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+﻿using ECharge.Infrastructure;
 using Microsoft.OpenApi.Models;
 
 internal class Program
@@ -21,6 +15,7 @@ internal class Program
         builder.Services.AddInfrastructure(configuration);
 
         builder.Services.AddControllers();
+        builder.Services.AddControllersWithViews();
 
 
         builder.Services.AddSwaggerGen(c =>

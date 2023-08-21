@@ -1,0 +1,141 @@
+﻿@using ECharge.Domain.ChargePointActions.Model.PaymentStatus
+@model PaymentStatusResponse
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    @if ((byte)Model.StatusCode == 200 && Model.SingleOrderResponse.Status == "charged")
+    {
+        <title>Uğurlu Ödəniş</title>
+    }
+    else
+    {
+        <title>Uğursuz Ödəniş</title>
+    }
+
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f4f7f6;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: linear-gradient(to bottom, #ffffff, #f4f7f6);
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 450px;
+            text-align: center;
+            color: #333;
+        }
+
+        .icon {
+            color: #00cc66;
+            font-size: 100px;
+            margin-bottom: 20px;
+        }
+
+            .icon.error {
+                color: #ff3333;
+            }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+
+        p {
+            font-size: 18px;
+            color: #777;
+            margin-bottom: 20px;
+        }
+
+        .transaction-details {
+            text-align: left;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+            .transaction-details h2 {
+                font-size: 24px;
+                margin-bottom: 15px;
+                color: #333;
+            }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    @{
+        if ((byte)Model.StatusCode == 200 && Model.SingleOrderResponse.Status == "charged")
+        {
+            <div class="container">
+                <div class="icon">&#10004;</div>
+                <h1>Uğurlu Ödəniş</h1>
+                <p>E-Charge seçdiyiniz üçün təşəkkür edirik.</p>
+                <div class="transaction-details">
+                    <h2>Əməliyyat məlumatları</h2>
+                    <div class="detail-item">
+                        <span>Əməliyyat nömrəsi:</span>
+                        <span>@Model.SingleOrderResponse.Id</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>Ödənilmiş məbləğ:</span>
+                        <span>@Model.SingleOrderResponse.AmountCharged AZN</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>İcazə kodu:</span>
+                        <span>@Model.SingleOrderResponse.AuthCode</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>Əməliyyat tarixi:</span>
+                        <span>@Model.SingleOrderResponse.Created</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>Doldurma müddəti:</span>
+                        <span>@Model.Session.Duration dəqiqə</span>
+                    </div>
+                </div>
+                <div class="footer">
+                    <p>Təklif və iradlar üçün support@example.com ilə əlaqə saxlayın</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container">
+                <div class="icon error">&#10008;</div>
+                <h1>Uğursuz Ödəniş</h1>
+                <p>Üzr istəyirik, ödəniş zamanı problem baş verdi.</p>
+                <div class="footer">
+                    <p>Ödəniş məlumatınızı yoxlayın və ya daha sonra yenidən cəhd edin.</p>
+                </div>
+            </div>
+        }
+    }
+
+
+
+</body>
+</html>

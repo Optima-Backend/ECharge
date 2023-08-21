@@ -12,13 +12,14 @@ namespace ECharge.Infrastructure.Services.Quartz
             _scheduler = scheduler;
         }
 
-        public async Task ScheduleJob(DateTime startDate, DateTime endDate, string chargePointId)
+        public async Task ScheduleJob(DateTime startDate, DateTime endDate, string chargePointId, string sessionId)
         {
-            var diff = endDate.AddSeconds(-10) - startDate.AddSeconds(10);
+            var diff = endDate.AddSeconds(-10) - startDate;
 
             IJobDetail job = JobBuilder.Create<CustomJob>()
                 .WithIdentity("customJob", "group1")
                 .UsingJobData("chargePointId", chargePointId)
+                .UsingJobData("sessionId", sessionId)
                 .Build();
 
             ITrigger trigger = TriggerBuilder.Create()
@@ -48,6 +49,7 @@ namespace ECharge.Infrastructure.Services.Quartz
         {
             JobDataMap dataMap = context.JobDetail.JobDataMap;
             string chargePointId = dataMap.GetString("chargePointId");
+            string sessionId = dataMap.GetString("sessionId");
 
             _chargeSession.Execute(chargePointId);
 

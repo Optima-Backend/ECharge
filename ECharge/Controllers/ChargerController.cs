@@ -1,65 +1,65 @@
-using ECharge.Domain.EVtrip.DTOs.Requests;
-using ECharge.Domain.EVtrip.DTOs.Responses;
-using ECharge.Domain.EVtrip.Interfaces;
-using ECharge.Domain.EVtrip.Models;
-using Microsoft.AspNetCore.Mvc;
+//using ECharge.Domain.EVtrip.DTOs.Requests;
+//using ECharge.Domain.EVtrip.DTOs.Responses;
+//using ECharge.Domain.EVtrip.Interfaces;
+//using ECharge.Domain.EVtrip.Models;
+//using Microsoft.AspNetCore.Mvc;
 
-namespace ECharge.Api.Controllers;
+//namespace ECharge.Api.Controllers;
 
-[ApiController]
-[Route("api/[controller]/[action]")]
-public class ChargerController : Controller
-{
-    private readonly IChargePointApiClient _chargePointApi;
+//[ApiController]
+//[Route("api/[controller]/[action]")]
+//public class ChargerController : Controller
+//{
+//    private readonly IChargePointApiClient _chargePointApi;
 
-    public ChargerController(IChargePointApiClient chargePointApi)
-    {
-        _chargePointApi = chargePointApi;
-    }
+//    public ChargerController(IChargePointApiClient chargePointApi)
+//    {
+//        _chargePointApi = chargePointApi;
+//    }
 
-    [HttpGet]
-    public async Task<ActionResult<IQueryable<ChargePointShortView>>> GetAllChargePoints()
-    {
-        var allChargePointsAsync = await _chargePointApi.GetAllChargePointsAsync();
+//    [HttpGet]
+//    public async Task<ActionResult<IQueryable<ChargePointShortView>>> GetAllChargePoints()
+//    {
+//        var allChargePointsAsync = await _chargePointApi.GetAllChargePointsAsync();
 
-        return Ok(allChargePointsAsync);
-    }
+//        return Ok(allChargePointsAsync);
+//    }
 
-    [HttpGet]
-    public async Task<ActionResult<OperationResult<ChargePoint>>> GetSingleChargePoint(string id)
-    {
-        var singleChargePoint = await _chargePointApi.GetSingleChargerAsync(id);
+//    [HttpGet]
+//    public async Task<ActionResult<OperationResult<ChargePoint>>> GetSingleChargePoint(string id)
+//    {
+//        var singleChargePoint = await _chargePointApi.GetSingleChargerAsync(id);
 
-        return Ok(singleChargePoint);
-    }
+//        return Ok(singleChargePoint);
+//    }
 
-    [HttpGet]
-    public async Task<ActionResult<IQueryable<ChargingSession>>> GetChargingSessionsAsync(string id)
-    {
-        var sessions = await _chargePointApi.GetChargingSessionsAsync(id);
+//    [HttpGet]
+//    public async Task<ActionResult<IQueryable<ChargingSession>>> GetChargingSessionsAsync(string id)
+//    {
+//        var sessions = await _chargePointApi.GetChargingSessionsAsync(id);
 
-        return Ok(sessions);
-    }
+//        return Ok(sessions);
+//    }
 
-    [HttpPost]
-    public async Task<ActionResult<OperationResult<ChargingSession>>> StartChargePoint(string id,
-        StartChargingRequest startChargingRequest)
-    {
-        var startedChargePoint = await _chargePointApi.StartChargingAsync(id, startChargingRequest);
+//    [HttpPost]
+//    public async Task<ActionResult<OperationResult<ChargingSession>>> StartChargePoint(string id,
+//        StartChargingRequest startChargingRequest)
+//    {
+//        var startedChargePoint = await _chargePointApi.StartChargingAsync(id, startChargingRequest);
 
-        return Ok(startedChargePoint);
-    }
+//        return Ok(startedChargePoint);
+//    }
 
-    [HttpPost]
-    public async Task<ActionResult<OperationResult<ChargingSession>>> StopChargePoint(string id, StopChargingRequest stopChargingRequest)
-    {
-        var stoppedChargePoint = await _chargePointApi.StopChargingAsync(id, stopChargingRequest);
+//    [HttpPost]
+//    public async Task<ActionResult<OperationResult<ChargingSession>>> StopChargePoint(string id, StopChargingRequest stopChargingRequest)
+//    {
+//        var stoppedChargePoint = await _chargePointApi.StopChargingAsync(id, stopChargingRequest);
 
-        if (!stoppedChargePoint.Success)
-        {
-            BadRequest();
-        }
+//        if (!stoppedChargePoint.Success)
+//        {
+//            BadRequest();
+//        }
 
-        return Ok(stoppedChargePoint);
-    }
-}
+//        return Ok(stoppedChargePoint);
+//    }
+//}

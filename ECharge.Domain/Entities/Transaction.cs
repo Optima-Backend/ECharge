@@ -7,25 +7,21 @@ namespace ECharge.Domain.Entities;
 [Table("PaymentTransaction")]
 public class Transaction
 {
+    [Key]
     public int Id { get; set; }
-
-    [Required]
-    public string Link { get; set; }
 
     [Column("PaymentStatus")]
     [Required]
     public PaymentStatus Status { get; set; }
 
-    [Required]
-    public string OrderId { get; set; }
-
-    public int AmountRefund { get; set; }
+    public decimal AmountRefund { get; set; }
 
     [Required]
     public DateTime CreatedDate { get; set; }
 
     public DateTime? UpdatedDate { get; set; }
 
+    public int OrderId { get; set; }
 
-
+    public Order Order { get; set; }
 }

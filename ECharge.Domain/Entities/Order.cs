@@ -18,6 +18,9 @@ namespace ECharge.Domain.Entities
         public string Description { get; set; }
         public decimal Amount { get; set; }
         public string Pan { get; set; }
+
+        public DateTime OrderCreatedAt { get; set; }
+
     }
 }
 

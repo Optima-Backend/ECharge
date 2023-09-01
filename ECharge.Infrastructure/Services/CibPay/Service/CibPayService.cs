@@ -12,6 +12,7 @@ using ECharge.Domain.CibPay.Model.RefundOrder.Command;
 using ECharge.Domain.CibPay.Model.BaseResponse;
 using ECharge.Infrastructure.Services.CibPay.Certificate.Api;
 using Microsoft.Extensions.Configuration;
+using ECharge.Domain.CibPay.Model.RefundOrder.Response;
 
 namespace ECharge.Infrastructure.Services.CibPay.Service
 {
@@ -187,7 +188,7 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
             }
         }
 
-        public async Task<CibBaseResponse<SingleOrderResponse>> RefundOrder(RefundOrderCommand refundOrderCommand)
+        public async Task<CibBaseResponse<RefundOrderResponse>> RefundOrder(RefundOrderCommand refundOrderCommand)
         {
             try
             {
@@ -195,10 +196,10 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
 
                 var requestData = new
                 {
-                    amount = refundOrderCommand.RefundAmount,
+                    //amount = refundOrderCommand.RefundAmount,
                 };
 
-                return await SendRequestAsync<SingleOrderResponse>(endpoint, HttpMethod.Put, requestData);
+                return await SendRequestAsync<RefundOrderResponse>(endpoint, HttpMethod.Put, requestData);
             }
             catch (Exception ex)
             {

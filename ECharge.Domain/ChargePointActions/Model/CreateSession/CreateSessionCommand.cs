@@ -2,8 +2,7 @@
 {
     public class CreateSessionCommand
     {
-        public required DateTime PlannedStartDate { get; set; }
-        public required DateTime PlannedEndDate { get; set; }
+        public required TimeSpan Duration { get; set; }
         public required string ChargePointId { get; set; }
         public required string UserId { get; set; }
         public required string Name { get; set; }

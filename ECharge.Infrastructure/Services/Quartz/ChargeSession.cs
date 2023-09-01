@@ -1,54 +1,102 @@
 ﻿using ECharge.Domain.Enums;
 using ECharge.Domain.EVtrip.DTOs.Requests;
 using ECharge.Domain.EVtrip.Interfaces;
-using ECharge.Domain.Job.Interface;
 using ECharge.Infrastructure.Services.DatabaseContext;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
+using System;
+using ECharge.Domain.Entities;
+using ECharge.Domain.Job.Interface;
 
 namespace ECharge.Infrastructure.Services.Quartz
 {
     public class ChargeSession : IChargeSession
     {
-        private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly IChargePointApiClient _chargePointApiClient;
+        private readonly DataContext _context;
 
-        public ChargeSession(IServiceScopeFactory serviceScopeFactory)
+        public ChargeSession(IChargePointApiClient chargePointApiClient, DataContext context)
         {
-            _serviceScopeFactory = serviceScopeFactory;
+            _chargePointApiClient = chargePointApiClient;
+            _context = context;
         }
 
-        public async Task Execute(string chargePointId)
+        public async Task<ChargeRequestStatus> Execute(string orderId, bool tryAgain)
         {
-            try
+            var session = await _context.Sessions
+                .Include(x => x.Order)
+                .FirstOrDefaultAsync(x => x.Order.OrderId == orderId);
+
+            if (session == null)
+                return ChargeRequestStatus.Error;
+
+            if ((session.Status == SessionStatus.NotCharging && !session.UpdatedTime.HasValue) || tryAgain)
             {
-                using var scope = _serviceScopeFactory.CreateScope();
-                var chargePointApiClient = scope.ServiceProvider.GetRequiredService<IChargePointApiClient>();
-                var context = scope.ServiceProvider.GetRequiredService<DataContext>();
-
-                var session = context.Sessions.OrderByDescending(x => x.Id).FirstOrDefault(x => x.ChargerPointId == chargePointId);
-
-                if (session.Status == SessionStatus.NotCharging && !session.UpdatedTime.HasValue)
-                {
-                    await chargePointApiClient.StartChargingAsync(chargePointId, new StartChargingRequest { IgnoreDelay = true });
-                    session.Status = SessionStatus.Charging;
-                    session.UpdatedTime = DateTime.Now;
-
-                }
-                else if (session.Status == SessionStatus.Charging && session.UpdatedTime.HasValue)
-                {
-                    var chargingSession = await chargePointApiClient.GetChargingSessionsAsync(chargePointId);
-                    await chargePointApiClient.StopChargingAsync(chargePointId, new StopChargingRequest { SessionId = chargingSession.SessionId });
-                    session.Status = SessionStatus.Complated;
-                    session.UpdatedTime = DateTime.Now;
-
-                }
-
-                await context.SaveChangesAsync();
+                return await HandleStartCharging(session);
             }
-            catch (Exception ex)
+            else if ((session.Status == SessionStatus.Charging && session.UpdatedTime.HasValue) || tryAgain)
             {
-                throw new Exception(ex.Message);
+                return await HandleStopCharging(session);
             }
+            else
+            {
+                return ChargeRequestStatus.Error;
+            }
+
+        }
+
+        private async Task<ChargeRequestStatus> HandleStartCharging(Session session)
+        {
+            var providerSession = await _chargePointApiClient.StartChargingAsync(session.ChargerPointId, new StartChargingRequest { IgnoreDelay = true });
+
+            if (providerSession?.Result?.Status == "active")
+            {
+                session.Status = SessionStatus.Charging;
+                session.StartDate = providerSession.Result.CreatedAt;
+                session.UpdatedTime = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+                return ChargeRequestStatus.StartSuccess;
+            }
+
+            await HandleChargeFailure(session);
+            return ChargeRequestStatus.StartCanceled;
+        }
+
+        private async Task<ChargeRequestStatus> HandleStopCharging(Session session)
+        {
+            var chargingSession = await _chargePointApiClient.GetChargingSessionsAsync(session.ChargerPointId);
+
+            if (chargingSession == null)
+            {
+                await HandleChargeFailure(session);
+                return ChargeRequestStatus.StopCanceled;
+            }
+
+            var providerSession = await _chargePointApiClient.StopChargingAsync(session.ChargerPointId, new StopChargingRequest { SessionId = chargingSession.SessionId });
+
+            if (providerSession?.Result?.Status == "closed")
+            {
+                session.Status = SessionStatus.Complated;
+                session.EndDate = providerSession.Result.ClosedAt;
+                session.UpdatedTime = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+                return ChargeRequestStatus.StopSuccess;
+            }
+
+            await HandleChargeFailure(session);
+            return ChargeRequestStatus.StopCanceled;
+        }
+
+        private async Task HandleChargeFailure(Session session)
+        {
+            session.Status = SessionStatus.Canceled;
+            session.StartDate = null;
+            session.EndDate = null;
+            session.UpdatedTime = DateTime.Now;
+
+            await _context.SaveChangesAsync();
         }
     }
 }
-

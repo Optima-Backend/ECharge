@@ -3,7 +3,7 @@
     public class RefundOrderCommand
     {
         public string OrderId { get; set; }
-        public decimal RefundAmount { get; set; }
+        //public decimal RefundAmount { get; set; }
     }
 }
 

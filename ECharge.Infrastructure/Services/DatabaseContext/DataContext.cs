@@ -23,7 +23,7 @@ public class DataContext : DbContext
         //optionsBuilder.UseSqlServer("Server=localhost,1433;Database=ECharge;Trusted_Connection=False;User=SA;Password=87arMWD5;TrustServerCertificate=True");
     }
 
-    public DbSet<Transaction> Transactions { get; set; }
+    //public DbSet<Transaction> Transactions { get; set; }
     public DbSet<Session> Sessions { get; set; }
     public DbSet<Order> Orders { get; set; }
 

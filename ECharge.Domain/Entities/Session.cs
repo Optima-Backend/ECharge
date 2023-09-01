@@ -13,21 +13,22 @@ public class Session
     [Required]
     public string ChargerPointId { get; set; }
 
-    [Required]
-    public DateTime StartDate { get; set; }
+    public DateTime? StartDate { get; set; }
+
+    public DateTime? EndDate { get; set; }
 
     [Required]
-    public DateTime EndDate { get; set; }
+    public double DurationInMinutes { get; set; }
 
     [Required]
-    public int Duration { get; set; }
+    public TimeSpan Duration { get; set; }
 
     [Required]
     public decimal PricePerHour { get; set; }
 
-    public int TransactionId { get; set; }
+    public int OrderId { get; set; }
 
-    public Transaction Transaction { get; set; }
+    public Order Order { get; set; }
 
     [Column("Charging status")]
     public SessionStatus Status { get; set; }
@@ -39,4 +40,11 @@ public class Session
     public string Name { get; set; }
 
     public string Email { get; set; }
+
+    public string ChargePointName { get; set; }
+
+    public int? MaxVoltage { get; set; }
+
+    public int? MaxAmperage { get; set; }
+
 }

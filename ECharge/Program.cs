@@ -1,4 +1,5 @@
 ﻿using ECharge.Infrastructure;
+using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 
 internal class Program
@@ -41,6 +42,12 @@ internal class Program
 
                     Array.Empty<string>()
                 }
+            });
+
+            c.MapType<TimeSpan>(() => new OpenApiSchema
+            {
+                Type = "string",
+                Example = new OpenApiString("00:00:00")
             });
         });
 

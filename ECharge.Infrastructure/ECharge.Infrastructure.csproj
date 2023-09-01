@@ -11,34 +11,26 @@
     <None Remove="Services\EVtrip\" />
     <None Remove="Repositories\" />
     <None Remove="Services\JWT\" />
-    <None Remove="Services\PulPal\" />
-    <None Remove="Services\PulPal\Utils\" />
-    <None Remove="Services\PulPal\Service\" />
     <None Remove="Services\DatabaseContext\" />
-    <None Remove="Services\HttpRequest\" />
-    <None Remove="Services\GatewayApiHelper\" />
     <None Remove="Services\CibPay\" />
     <None Remove="Services\CibPay\Service\" />
     <None Remove="Services\CibPay\Certificate\" />
     <None Remove="Services\CibPay\Certificate\Api\" />
     <None Remove="Services\ChargePointActions\" />
     <None Remove="Services\Quartz\" />
+    <None Remove="Repositories\Transaction\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Services\" />
     <Folder Include="Services\EVtrip\" />
     <Folder Include="Repositories\" />
     <Folder Include="Services\JWT\" />
-    <Folder Include="Services\PulPal\" />
-    <Folder Include="Services\PulPal\Utils\" />
-    <Folder Include="Services\PulPal\Service\" />
     <Folder Include="Services\DatabaseContext\" />
-    <Folder Include="Services\HttpRequest\" />
-    <Folder Include="Services\GatewayApiHelper\" />
     <Folder Include="Services\CibPay\" />
     <Folder Include="Services\CibPay\Certificate\" />
     <Folder Include="Services\ChargePointActions\" />
     <Folder Include="Services\Quartz\" />
+    <Folder Include="Repositories\Transaction\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ECharge.Domain\ECharge.Domain.csproj" />

@@ -4,6 +4,9 @@ using ECharge.Domain.CibPay.Interface;
 using ECharge.Domain.EVtrip.Interfaces;
 using ECharge.Domain.Job.Interface;
 using ECharge.Domain.JWT.Interface;
+using ECharge.Domain.Mappings;
+using ECharge.Domain.Repositories.Transaction.Interface;
+using ECharge.Infrastructure.Repositories.Transaction;
 using ECharge.Infrastructure.Services.ChargePointActions;
 using ECharge.Infrastructure.Services.CibPay.Service;
 using ECharge.Infrastructure.Services.DatabaseContext;
@@ -41,9 +44,13 @@ public static class DependencyInjection
             x.UseDefaultThreadPool(10);
         });
 
+        services.AddAutoMapper(typeof(MappingProfile).Assembly);
+
         services.AddSingleton<IJwtService, JwtService>();
 
         services.AddScoped<IChargePointApiClient, ChargePointApiClient>();
+
+        services.AddScoped<ITransactionRepository, TransactionRepository>();
 
         services.AddScoped<ICibPayService, CibPayService>();
 

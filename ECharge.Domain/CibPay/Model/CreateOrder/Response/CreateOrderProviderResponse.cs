@@ -1,7 +1,4 @@
-﻿
-using ECharge.Domain.GatewayApiHelper.Model;
-
-namespace ECharge.Domain.CibPay.Model.CreateOrder.Response
+﻿namespace ECharge.Domain.CibPay.Model.CreateOrder.Response
 {
     public class CreateOrderProviderResponse
     {

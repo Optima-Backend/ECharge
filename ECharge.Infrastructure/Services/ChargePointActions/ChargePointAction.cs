@@ -338,7 +338,7 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
             return new
             {
                 StatusCode = HttpStatusCode.InternalServerError,
-                ChargingStatusCode = 6,
+                ChargingStatusCode = 7,
                 Message = "Something went wrong"
             };
 

@@ -1,4 +1,5 @@
 ﻿using ECharge.Domain.EVtrip.Models;
+using ECharge.Infrastructure.Services.PaymentCalculator;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECharge.Api.Controllers
@@ -10,7 +11,7 @@ namespace ECharge.Api.Controllers
         public IActionResult HandleCableStateChanged([FromBody] CableStateChangedPayload payload)
         {
             if (payload != null)
-                return Ok($"Cable state: {payload.CableState}, Chaerger ID: {payload.ChargerId}, Connector: {payload.Connector}");
+                return Ok($"Cable state: {payload.CableState}, Charger ID: {payload.ChargerId}, Connector: {payload.Connector}");
             else
                 return BadRequest("Xeta");
         }
@@ -22,6 +23,12 @@ namespace ECharge.Api.Controllers
                 return Ok($"Charger ID: {payload.ChargerId}, Connector: {payload.Connector}, Finish reason: {payload.FinishReason}, Order UUID: {payload.OrderUuid}, Status: {payload.Status}");
             else
                 return BadRequest("Xeta");
+        }
+
+        [HttpPost("Calculate Payment")]
+        public IActionResult CheckPaymentMethod(decimal minutes, double total)
+        {
+            return Ok(PaymentCalculatorHandler.Calculate(minutes, total));
         }
     }
 }

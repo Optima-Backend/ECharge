@@ -9,6 +9,7 @@ using ECharge.Domain.Entities;
 using ECharge.Domain.Enums;
 using ECharge.Domain.EVtrip.Interfaces;
 using ECharge.Infrastructure.Services.DatabaseContext;
+using ECharge.Infrastructure.Services.PaymentCalculator;
 using ECharge.Infrastructure.Services.Quartz;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -84,7 +85,7 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
 
             if (orderProviderResponse.StatusCode == HttpStatusCode.Created && orderProviderResponse.Data.Orders.Any())
             {
-                using var transaction = await _context.Database.BeginTransactionAsync();
+                await using var transaction = await _context.Database.BeginTransactionAsync();
 
                 try
                 {
@@ -132,7 +133,7 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
                     return new
                     {
                         StatusCode = HttpStatusCode.Created,
-                        Amount = amount,
+                        Amount = PaymentCalculatorHandler.Calculate(command.Price,command.Duration.TotalMinutes),
                         PaymentUrl = _cibPayBaseUrl + providerOrder.Id,
                         OrderId = providerOrder.Id,
                         command.ChargePointId,

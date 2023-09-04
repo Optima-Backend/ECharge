@@ -19,7 +19,7 @@ namespace ECharge.Infrastructure.Services.JWT
             _secretKey = configuration["JwtSettings:SecretKey"];
             _issuer = configuration["JwtSettings:Issuer"];
             _audience = configuration["JwtSettings:Audience"];
-            _expirationMinutes = int.Parse(configuration["JwtSettings:ExpirationMinutes"]);
+            _expirationMinutes = int.Parse(configuration["JwtSettings:ExpirationMinutes"]!);
         }
 
         public string GenerateJwtToken(string role)

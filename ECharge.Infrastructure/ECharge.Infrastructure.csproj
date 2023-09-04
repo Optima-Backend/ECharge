@@ -21,7 +21,6 @@
     <None Remove="Repositories\Transaction\" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Services\" />
     <Folder Include="Services\EVtrip\" />
     <Folder Include="Repositories\" />
     <Folder Include="Services\JWT\" />

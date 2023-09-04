@@ -1,10 +1,5 @@
-﻿using System;
-using ECharge.Infrastructure;
-using ECharge.Infrastructure.Services.DatabaseContext;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+﻿using ECharge.Infrastructure;
+using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 
 internal class Program
@@ -21,6 +16,7 @@ internal class Program
         builder.Services.AddInfrastructure(configuration);
 
         builder.Services.AddControllers();
+        builder.Services.AddControllersWithViews();
 
 
         builder.Services.AddSwaggerGen(c =>
@@ -46,6 +42,12 @@ internal class Program
 
                     Array.Empty<string>()
                 }
+            });
+
+            c.MapType<TimeSpan>(() => new OpenApiSchema
+            {
+                Type = "string",
+                Example = new OpenApiString("00:00:00")
             });
         });
 

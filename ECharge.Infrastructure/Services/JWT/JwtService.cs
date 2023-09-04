@@ -1,8 +1,6 @@
-﻿using System;
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using ECharge.Domain.JWT.DTOs;
 using ECharge.Domain.JWT.Interface;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -24,17 +22,14 @@ namespace ECharge.Infrastructure.Services.JWT
             _expirationMinutes = int.Parse(configuration["JwtSettings:ExpirationMinutes"]);
         }
 
-        public string GenerateJwtToken(GenerateTokenModel tokenModel)
+        public string GenerateJwtToken(string role)
         {
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, tokenModel.UserId),
-                new Claim(ClaimTypes.Name, tokenModel.Name),
-                new Claim(ClaimTypes.Surname, tokenModel.Surname),
-                new Claim(ClaimTypes.Role, tokenModel.Role)
+                new Claim(ClaimTypes.Role, role)
             };
 
             var tokenDescriptor = new SecurityTokenDescriptor

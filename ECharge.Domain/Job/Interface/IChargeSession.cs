@@ -1,7 +1,9 @@
-﻿namespace ECharge.Domain.Job.Interface
+﻿using ECharge.Domain.Enums;
+
+namespace ECharge.Domain.Job.Interface
 {
     public interface IChargeSession
     {
-        Task Execute(string chargePointId);
+        Task<ChargeRequestStatus> Execute(string chargePointId, bool tryAgain);
     }
 }

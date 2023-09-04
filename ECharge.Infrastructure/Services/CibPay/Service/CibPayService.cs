@@ -11,7 +11,8 @@ using ECharge.Domain.CibPay.Model.Ping.Response;
 using ECharge.Domain.CibPay.Model.RefundOrder.Command;
 using ECharge.Domain.CibPay.Model.BaseResponse;
 using ECharge.Infrastructure.Services.CibPay.Certificate.Api;
-using static System.Net.WebRequestMethods;
+using Microsoft.Extensions.Configuration;
+using ECharge.Domain.CibPay.Model.RefundOrder.Response;
 
 namespace ECharge.Infrastructure.Services.CibPay.Service
 {
@@ -21,13 +22,28 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
         private readonly X509Certificate2 _clientCertificate;
         private readonly string _credentials;
         private readonly string _paymentUrl;
+        private readonly string username;
+        private readonly string password;
+        private readonly string _returnUrl;
+        private readonly bool _autoCharge;
+        private readonly byte _force3D;
+        private readonly string _currency;
+        private readonly string _expirationTimeout;
+        private readonly string _language;
 
-        public CibPayService(HttpClient httpClient)
+        public CibPayService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
-            var username = "taxiapp";
-            var password = "n6XufZfZoWjjwjZMHq";
-            _paymentUrl = "https://checkout-preprod.cibpay.co/pay/";
+            username = configuration["CibPay:Username"];
+            password = configuration["CibPay:Password"];
+            _paymentUrl = configuration["CibPay:BaseUrl"];
+            _returnUrl = configuration["CibPay:ReturnUrl"];
+
+            _autoCharge = bool.Parse(configuration["CibPay:AutoCharge"]);
+            _force3D = byte.Parse(configuration["CibPay:Force3D"]);
+            _currency = configuration["CibPay:Currency"];
+            _expirationTimeout = configuration["CibPay:ExpirationTimeout"];
+            _language = configuration["CibPay:Language"];
             _clientCertificate = GetCertificate();
             _credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}:{password}"));
 
@@ -38,7 +54,7 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
         {
             _httpClient.DefaultRequestHeaders.Accept.Clear();
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            _httpClient.BaseAddress = new Uri("https://api-preprod.cibpay.co");
+            _httpClient.BaseAddress = new Uri(_paymentUrl);
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", _credentials);
         }
 
@@ -92,22 +108,21 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
                 var requestData = new
                 {
                     amount = command.Amount,
-                    currency = string.IsNullOrEmpty(command.Currency) ? "AZN" : command.Currency,
-                    extra_fields = new { invoice_id = string.IsNullOrEmpty(command.InvoiceId) ? "PKgn75jj2e2RDCkB" : command.InvoiceId },
-                    merchant_order_id = string.IsNullOrEmpty(command.MerchantOrderId) ? "PKgn75jj2e2RDCkB" : command.MerchantOrderId,
+                    currency = _currency,
+                    extra_fields = new { user_id = command.UserId, charge_point_id = command.ChargePointId },
+                    merchant_order_id = command.MerchantOrderId,
                     options = new
                     {
-                        auto_charge = command.AutoCharge ?? true,
-                        expiration_timeout = string.IsNullOrEmpty(command.ExpirationTimeout) ? "4320m" : command.ExpirationTimeout,
-                        force3d = command.Force3d ?? 1,
-                        language = string.IsNullOrEmpty(command.Language) ? "az" : command.Language,
-                        //http://4.193.153.177:4444/api/echarge/payment-redirect-url
-                        return_url = string.IsNullOrEmpty(command.ReturnUrl) ? "https://google.com" : command.ReturnUrl
+                        auto_charge = _autoCharge,
+                        expiration_timeout = _expirationTimeout,
+                        force3d = _force3D,
+                        language = _language,
+                        return_url = _returnUrl
                     },
                     client = new
                     {
-                        name = string.IsNullOrEmpty(command.Name) ? "Orkhan" : command.Name,
-                        email = string.IsNullOrEmpty(command.Email) ? "amirovorxan@gmail.com" : command.Email
+                        name = command.Name,
+                        email = command.Email
                     }
                 };
 
@@ -173,7 +188,7 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
             }
         }
 
-        public async Task<CibBaseResponse<SingleOrderResponse>> RefundOrder(RefundOrderCommand refundOrderCommand)
+        public async Task<CibBaseResponse<RefundOrderResponse>> RefundOrder(RefundOrderCommand refundOrderCommand)
         {
             try
             {
@@ -181,10 +196,10 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
 
                 var requestData = new
                 {
-                    amount = refundOrderCommand.RefundAmount,
+                    //amount = refundOrderCommand.RefundAmount,
                 };
 
-                return await SendRequestAsync<SingleOrderResponse>(endpoint, HttpMethod.Put, requestData);
+                return await SendRequestAsync<RefundOrderResponse>(endpoint, HttpMethod.Put, requestData);
             }
             catch (Exception ex)
             {

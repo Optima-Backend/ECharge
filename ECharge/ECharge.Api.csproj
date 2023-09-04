@@ -16,6 +16,9 @@
   <ItemGroup>
     <None Remove="Controllers\" />
     <None Remove="HostedServices\" />
+    <None Remove="Views\" />
+    <None Remove="Views\Shared\" />
+    <None Remove="Views\Payment\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ECharge.Infrastructure\ECharge.Infrastructure.csproj">
@@ -23,5 +26,8 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="HostedServices\" />
+    <Folder Include="Views\" />
+    <Folder Include="Views\Shared\" />
+    <Folder Include="Views\Payment\" />
   </ItemGroup>
 </Project>

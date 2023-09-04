@@ -17,19 +17,8 @@
     <None Remove="Repositories\" />
     <None Remove="JWT\" />
     <None Remove="JWT\Interface\" />
-    <None Remove="JWT\DTOs\" />
-    <None Remove="PulPal\" />
     <None Remove="PulPal\Model\" />
-    <None Remove="PulPal\Interface\" />
-    <None Remove="DTOs\" />
-    <None Remove="PulPal\DTOs\" />
     <None Remove="Entities\" />
-    <None Remove="HttpRequest\" />
-    <None Remove="HttpRequest\Interface\" />
-    <None Remove="HttpRequest\Model\" />
-    <None Remove="GatewayApiHelper\" />
-    <None Remove="GatewayApiHelper\Interface\" />
-    <None Remove="GatewayApiHelper\Model\" />
     <None Remove="CibPay\" />
     <None Remove="CibPay\Interface\" />
     <None Remove="CibPay\Model\" />
@@ -51,7 +40,12 @@
     <None Remove="ChargePointActions\Model\CreateTransaction\" />
     <None Remove="Job\" />
     <None Remove="Job\Interface\" />
-    <None Remove="ErrorModels\" />
+    <None Remove="ChargePointActions\Model\PaymentStatus\" />
+    <None Remove="Repositories\Transaction\" />
+    <None Remove="Repositories\Transaction\Interface\" />
+    <None Remove="Repositories\Transaction\DTO\" />
+    <None Remove="Repositories\Transaction\Query\" />
+    <None Remove="Mappings\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="EVtrip\" />
@@ -64,18 +58,7 @@
     <Folder Include="Repositories\" />
     <Folder Include="JWT\" />
     <Folder Include="JWT\Interface\" />
-    <Folder Include="JWT\DTOs\" />
-    <Folder Include="PulPal\" />
-    <Folder Include="PulPal\Interface\" />
-    <Folder Include="DTOs\" />
-    <Folder Include="PulPal\DTOs\" />
     <Folder Include="Entities\" />
-    <Folder Include="HttpRequest\" />
-    <Folder Include="HttpRequest\Interface\" />
-    <Folder Include="HttpRequest\Model\" />
-    <Folder Include="GatewayApiHelper\" />
-    <Folder Include="GatewayApiHelper\Interface\" />
-    <Folder Include="GatewayApiHelper\Model\" />
     <Folder Include="CibPay\" />
     <Folder Include="CibPay\Interface\" />
     <Folder Include="CibPay\Model\" />
@@ -97,9 +80,15 @@
     <Folder Include="ChargePointActions\Model\CreateTransaction\" />
     <Folder Include="Job\" />
     <Folder Include="Job\Interface\" />
-    <Folder Include="ErrorModels\" />
+    <Folder Include="ChargePointActions\Model\PaymentStatus\" />
+    <Folder Include="Repositories\Transaction\" />
+    <Folder Include="Repositories\Transaction\Interface\" />
+    <Folder Include="Repositories\Transaction\DTO\" />
+    <Folder Include="Repositories\Transaction\Query\" />
+    <Folder Include="Mappings\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
   </ItemGroup>
 </Project>

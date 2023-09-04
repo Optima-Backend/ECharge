@@ -7,30 +7,44 @@ namespace ECharge.Domain.Entities;
 [Table("ChargePointSession")]
 public class Session
 {
-    public int Id { get; set; }
+    [Key]
+    public string Id { get; set; }
 
     [Required]
-    public required string ChargerPointId { get; set; }
+    public string ChargerPointId { get; set; }
+
+    public DateTime? StartDate { get; set; }
+
+    public DateTime? EndDate { get; set; }
 
     [Required]
-    public DateTime StartDate { get; set; }
+    public double DurationInMinutes { get; set; }
 
     [Required]
-    public DateTime EndDate { get; set; }
+    public TimeSpan Duration { get; set; }
 
     [Required]
-    public int Duration { get; set; }
+    public decimal PricePerHour { get; set; }
 
-    [Required]
-    public int PricePerHour { get; set; }
+    public int OrderId { get; set; }
 
-    public int TransactionId { get; set; }
-
-    public Transaction Transaction { get; set; }
+    public Order Order { get; set; }
 
     [Column("Charging status")]
     public SessionStatus Status { get; set; }
 
     public DateTime? UpdatedTime { get; set; }
+
+    public string UserId { get; set; }
+
+    public string Name { get; set; }
+
+    public string Email { get; set; }
+
+    public string ChargePointName { get; set; }
+
+    public int? MaxVoltage { get; set; }
+
+    public int? MaxAmperage { get; set; }
 
 }

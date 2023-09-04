@@ -8,13 +8,13 @@ namespace ECharge.Domain.CibPay.Model
         public string FailureMessage { get; set; }
 
         [JsonProperty("amount")]
-        public string Amount { get; set; }
+        public decimal Amount { get; set; }
 
         [JsonProperty("amount_charged")]
-        public string AmountCharged { get; set; }
+        public decimal AmountCharged { get; set; }
 
         [JsonProperty("amount_refunded")]
-        public string AmountRefunded { get; set; }
+        public decimal AmountRefunded { get; set; }
 
         [JsonProperty("auth_code")]
         public string AuthCode { get; set; }
@@ -26,7 +26,7 @@ namespace ECharge.Domain.CibPay.Model
         public Client Client { get; set; }
 
         [JsonProperty("created")]
-        public string Created { get; set; }
+        public DateTime Created { get; set; }
 
         [JsonProperty("currency")]
         public string Currency { get; set; }
@@ -68,7 +68,7 @@ namespace ECharge.Domain.CibPay.Model
         public string Status { get; set; }
 
         [JsonProperty("updated")]
-        public string Updated { get; set; }
+        public DateTime? Updated { get; set; }
     }
 
     public class Card

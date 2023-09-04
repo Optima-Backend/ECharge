@@ -2,76 +2,73 @@
 using ECharge.Domain.EVtrip.DTOs.Responses;
 using ECharge.Domain.EVtrip.Interfaces;
 using ECharge.Domain.EVtrip.Models;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System.Net.Http.Headers;
 using System.Text;
-
 
 namespace ECharge.Infrastructure.Services.EVtrip
 {
     public class ChargePointApiClient : IChargePointApiClient
     {
         private readonly HttpClient _httpClient;
-        private const string BaseUrl = "https://admin.evtrip.net";
-        private const string TokenEndpoint = "/api/oauth/token";
-        private const string ClientId = "82783";
-        private const string ClientSecret = "yzgPOubhxBL9";
+        private readonly string BaseUrl;
+        private readonly string ClientId;
+        private readonly string ClientSecret;
+        private readonly string Username;
+        private readonly string Password;
 
-        public ChargePointApiClient(HttpClient httpClient)
+        private AccessTokenModel _currentToken;
+        private DateTime _tokenExpiryTime;
+
+        public ChargePointApiClient(HttpClient httpClient, IConfiguration configuration)
         {
-            var handler = new HttpClientHandler();
-            handler.ClientCertificateOptions = ClientCertificateOption.Manual;
-            handler.ServerCertificateCustomValidationCallback = (httpRequestMessage, cert, certChain, policyErrors) =>
-            {
-                return true;
-            };
+            BaseUrl = configuration["EVTrip:BaseURl"];
+            ClientId = configuration["EVTrip:ClientId"];
+            ClientSecret = configuration["EVTrip:ClientSecret"];
+            Username = configuration["EVTrip:Username"];
+            Password = configuration["EVTrip:Password"];
 
-            _httpClient = new HttpClient(handler);
+            _httpClient = httpClient;
             _httpClient.BaseAddress = new Uri(BaseUrl);
             _httpClient.DefaultRequestHeaders.Accept.Clear();
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        private async Task<OperationResult<string>> GetAccessTokenAsync()
+        private async Task<AccessTokenModel> GetAccessTokenAsync()
         {
-            OperationResult<string> tokenResult = new();
-
-            Dictionary<string, string> formData = new()
+            var formData = new Dictionary<string, string>
             {
                 { "grant_type", "password" },
-                { "username", "ilab-api" },
-                { "password", "111" },
+                { "username", Username },
+                { "password", Password },
                 { "client_id", ClientId },
                 { "client_secret", ClientSecret }
             };
 
-            var response = await _httpClient.PostAsync(TokenEndpoint, new FormUrlEncodedContent(formData));
+            var response = await _httpClient.PostAsync("/api/oauth/token", new FormUrlEncodedContent(formData));
+            response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<AccessTokenModel>(result);
+        }
 
-            if (!response.IsSuccessStatusCode)
+        private async Task<AccessTokenModel> GetOrRefreshTokenAsync()
+        {
+            if (_currentToken == null || DateTime.UtcNow >= _tokenExpiryTime)
             {
-                tokenResult.Success = false;
-                tokenResult.Error!.Code = "500";
-                tokenResult.Error.Message = "Token can not be generated";
-                tokenResult.Result = "";
+                _currentToken = await GetAccessTokenAsync();
+                _tokenExpiryTime = DateTime.UtcNow.AddSeconds(_currentToken.ExpiresIn - 10); // Refresh token 10 seconds before expiry
             }
 
-            tokenResult.Result = JsonConvert.DeserializeObject<AccessTokenModel>(result).AccessToken;
-            tokenResult.Success = true;
-
-            return tokenResult;
+            return _currentToken;
         }
 
         private async Task<HttpClient> GetAuthorizedHttpClientAsync()
         {
-            var accessToken = await GetAccessTokenAsync();
-
-            _httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", accessToken.Result);
-
+            var accessToken = await GetOrRefreshTokenAsync();
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken.AccessToken);
             return _httpClient;
-
         }
 
         public async Task<IQueryable<ChargePointShortView>> GetAllChargePointsAsync()
@@ -79,17 +76,15 @@ namespace ECharge.Infrastructure.Services.EVtrip
             try
             {
                 var authorizedClient = await GetAuthorizedHttpClientAsync();
-
-                HttpResponseMessage response = await authorizedClient.GetAsync("/api/external/cpo/v1/chargepoint/");
+                var response = await authorizedClient.GetAsync("/api/external/cpo/v1/chargepoint/");
                 response.EnsureSuccessStatusCode();
 
-                string content = await response.Content.ReadAsStringAsync();
+                var content = await response.Content.ReadAsStringAsync();
                 var chargePoints = JsonConvert.DeserializeObject<List<ChargePointShortView>>(content);
                 return chargePoints.AsQueryable();
             }
-            catch (HttpRequestException ex)
+            catch (Exception ex)
             {
-
                 throw new Exception("API isteği başarısız oldu: " + ex.Message);
             }
         }
@@ -99,21 +94,15 @@ namespace ECharge.Infrastructure.Services.EVtrip
             try
             {
                 var authorizedClient = await GetAuthorizedHttpClientAsync();
-
-                HttpResponseMessage response =
-                    await authorizedClient.GetAsync(
-                        $"/api/external/cpo/v1/chargepoint/{chargepointId}/sessions/current");
-
+                var response = await authorizedClient.GetAsync($"/api/external/cpo/v1/chargepoint/{chargepointId}/sessions/current");
                 response.EnsureSuccessStatusCode();
 
-                string content = await response.Content.ReadAsStringAsync();
-
-                var chargingSessions = JsonConvert.DeserializeObject<ChargingSession>(content);
-                return chargingSessions;
+                var content = await response.Content.ReadAsStringAsync();
+                return JsonConvert.DeserializeObject<ChargingSession>(content);
             }
-            catch (HttpRequestException ex)
+            catch (Exception ex)
             {
-                //TODO - Log və exception'ları burada handle etmək!
+                //TODO: Log ve istisnaları burada yönetin
                 throw new Exception("API isteği başarısız oldu: " + ex.Message);
             }
         }
@@ -123,96 +112,322 @@ namespace ECharge.Infrastructure.Services.EVtrip
             try
             {
                 var authorizedClient = await GetAuthorizedHttpClientAsync();
+                var response = await authorizedClient.GetAsync($"/api/external/cpo/v1/chargepoint/{chargepointId}");
 
-                OperationResult<ChargePoint> singlePointResult = new();
-
-                HttpResponseMessage response =
-                    await authorizedClient.GetAsync($"/api/external/cpo/v1/chargepoint/{chargepointId}");
-
-                var result = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
+                if (response.IsSuccessStatusCode)
                 {
-                    singlePointResult.Result = null;
-                    singlePointResult.Success = false;
-                    singlePointResult.Error!.Code = "500";
-                    singlePointResult.Error.Message = $"Can't get information for id: {chargepointId}";
-
+                    var result = await response.Content.ReadAsStringAsync();
+                    return new OperationResult<ChargePoint>
+                    {
+                        Result = JsonConvert.DeserializeObject<ChargePoint>(result),
+                        Success = true
+                    };
                 }
-
-                singlePointResult.Result = JsonConvert.DeserializeObject<ChargePoint>(result);
-                singlePointResult.Success = true;
-                singlePointResult.Error = null;
-
-                return singlePointResult;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                throw;
-            }
-
-        }
-
-        public async Task<OperationResult<ChargingSession>> StartChargingAsync(string chargepointId,
-            StartChargingRequest request)
-        {
-            try
-            {
-                var authorizedClient = await GetAuthorizedHttpClientAsync();
-
-                string requestJson = JsonConvert.SerializeObject(request);
-
-                var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
-
-                HttpResponseMessage response =
-                    await authorizedClient.PostAsync($"/api/external/cpo/v1/chargepoint/{chargepointId}/start",
-                        content);
-
-                response.EnsureSuccessStatusCode();
-
-                string responseJson = await response.Content.ReadAsStringAsync();
-
-                var result = JsonConvert.DeserializeObject<OperationResult<ChargingSession>>(responseJson);
-
-                return result;
+                else
+                {
+                    return new OperationResult<ChargePoint>
+                    {
+                        Success = false,
+                        Error = new Error
+                        {
+                            Code = ((int)response.StatusCode).ToString(),
+                            Message = $"Can't get information for id: {chargepointId}"
+                        }
+                    };
+                }
             }
             catch (Exception ex)
             {
-                //TODO - Log və exception'ları burada handle etmək!
+                //TODO: Log ve istisnaları burada yönetin
                 throw new Exception("API isteği başarısız oldu: " + ex.Message);
             }
         }
 
-        public async Task<OperationResult<ChargingSession>> StopChargingAsync(string chargepointId,
-            StopChargingRequest request)
+        public async Task<OperationResult<ChargingSession>> StartChargingAsync(string chargepointId, StartChargingRequest request)
         {
             try
             {
                 var authorizedClient = await GetAuthorizedHttpClientAsync();
-
-                string requestJson = JsonConvert.SerializeObject(request);
-
+                var requestJson = JsonConvert.SerializeObject(request);
                 var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+                var response = await authorizedClient.PostAsync($"/api/external/cpo/v1/chargepoint/{chargepointId}/start", content);
 
-                HttpResponseMessage response =
-                    await authorizedClient.PostAsync($"/api/external/cpo/v1/chargepoint/{chargepointId}/stop", content);
-
-                string responseJson = await response.Content.ReadAsStringAsync();
-
-
-                var result = JsonConvert.DeserializeObject<OperationResult<ChargingSession>>(responseJson);
-
-                return result;
+                response.EnsureSuccessStatusCode();
+                var responseJson = await response.Content.ReadAsStringAsync();
+                return JsonConvert.DeserializeObject<OperationResult<ChargingSession>>(responseJson);
             }
-            catch (HttpRequestException ex)
+            catch (Exception ex)
             {
-                //TODO - Log və exception'ları burada handle etmək!
+                //TODO: Log ve istisnaları burada yönetin
                 throw new Exception("API isteği başarısız oldu: " + ex.Message);
             }
         }
 
-    }
+        public async Task<OperationResult<ChargingSession>> StopChargingAsync(string chargepointId, StopChargingRequest request)
+        {
+            try
+            {
+                var authorizedClient = await GetAuthorizedHttpClientAsync();
+                var requestJson = JsonConvert.SerializeObject(request);
+                var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+                var response = await authorizedClient.PostAsync($"/api/external/cpo/v1/chargepoint/{chargepointId}/stop", content);
 
+                var responseJson = await response.Content.ReadAsStringAsync();
+                return JsonConvert.DeserializeObject<OperationResult<ChargingSession>>(responseJson);
+            }
+            catch (Exception ex)
+            {
+                //TODO: Log ve istisnaları burada yönetin
+                throw new Exception("API isteği başarısız oldu: " + ex.Message);
+            }
+        }
+    }
 }
+
+
+//using ECharge.Domain.EVtrip.DTOs.Requests;
+//using ECharge.Domain.EVtrip.DTOs.Responses;
+//using ECharge.Domain.EVtrip.Interfaces;
+//using ECharge.Domain.EVtrip.Models;
+//using Newtonsoft.Json;
+//using System.Net.Http.Headers;
+//using System.Text;
+
+
+//namespace ECharge.Infrastructure.Services.EVtrip
+//{
+//    public class ChargePointApiClient : IChargePointApiClient
+//    {
+//        private readonly HttpClient _httpClient;
+//        private const string BaseUrl = "https://admin.evtrip.net";
+//        private const string TokenEndpoint = "/api/oauth/token";
+//        private const string ClientId = "82783";
+//        private const string ClientSecret = "yzgPOubhxBL9";
+
+//        public ChargePointApiClient(HttpClient httpClient)
+//        {
+//            var handler = new HttpClientHandler();
+//            handler.ClientCertificateOptions = ClientCertificateOption.Manual;
+//            handler.ServerCertificateCustomValidationCallback = (httpRequestMessage, cert, certChain, policyErrors) =>
+//            {
+//                return true;
+//            };
+
+//            _httpClient = new HttpClient(handler);
+//            _httpClient.BaseAddress = new Uri(BaseUrl);
+//            _httpClient.DefaultRequestHeaders.Accept.Clear();
+//            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+//        }
+
+//        private async Task<AccessTokenModel> GetAccessTokenAsync()
+//        {
+//            OperationResult<string> tokenResult = new();
+
+//            Dictionary<string, string> formData = new()
+//            {
+//                { "grant_type", "password" },
+//                { "username", "ilab-api" },
+//                { "password", "111" },
+//                { "client_id", ClientId },
+//                { "client_secret", ClientSecret }
+//            };
+
+//            var response = await _httpClient.PostAsync(TokenEndpoint, new FormUrlEncodedContent(formData));
+
+//            var result = await response.Content.ReadAsStringAsync();
+
+//            var providerTokenResult = JsonConvert.DeserializeObject<AccessTokenModel>(result);
+
+//            return providerTokenResult;
+//        }
+//        private async Task<OperationResult<string>> GetRefreshedTokenAsync()
+//        {
+//            var providerResult = await GetAccessTokenAsync();
+//            if (providerResult.ExpiresIn <= 5)
+//            {
+//                Thread.Sleep(providerResult.ExpiresIn);
+//                providerResult = await GetAccessTokenAsync();
+//            }
+
+//            OperationResult<string> tokenResult = new();
+
+//            Dictionary<string, string> formData = new()
+//            {
+//                { "grant_type", "refresh_token" },
+//                { "refresh_token", providerResult.RefreshToken },
+//                { "client_id", ClientId },
+//                { "client_secret", ClientSecret }
+//            };
+
+//            var response = await _httpClient.PostAsync(TokenEndpoint, new FormUrlEncodedContent(formData));
+
+//            var result = await response.Content.ReadAsStringAsync();
+
+//            if (!response.IsSuccessStatusCode)
+//            {
+//                tokenResult.Success = false;
+//                tokenResult.Error!.Code = "500";
+//                tokenResult.Error.Message = "Token can not be generated";
+//                tokenResult.Result = "";
+//            }
+
+//            tokenResult.Result = JsonConvert.DeserializeObject<AccessTokenModel>(result).AccessToken;
+//            tokenResult.Success = true;
+
+//            return tokenResult;
+//        }
+//        private async Task<HttpClient> GetAuthorizedHttpClientAsync()
+//        {
+//            var accessToken = await GetRefreshedTokenAsync();
+
+//            _httpClient.DefaultRequestHeaders.Authorization =
+//                new AuthenticationHeaderValue("Bearer", accessToken.Result);
+
+//            return _httpClient;
+
+//        }
+
+//        public async Task<IQueryable<ChargePointShortView>> GetAllChargePointsAsync()
+//        {
+//            try
+//            {
+//                var authorizedClient = await GetAuthorizedHttpClientAsync();
+
+//                HttpResponseMessage response = await authorizedClient.GetAsync("/api/external/cpo/v1/chargepoint/");
+//                response.EnsureSuccessStatusCode();
+
+//                string content = await response.Content.ReadAsStringAsync();
+//                var chargePoints = JsonConvert.DeserializeObject<List<ChargePointShortView>>(content);
+//                return chargePoints.AsQueryable();
+//            }
+//            catch (HttpRequestException ex)
+//            {
+
+//                throw new Exception("API isteği başarısız oldu: " + ex.Message);
+//            }
+//        }
+
+//        public async Task<ChargingSession> GetChargingSessionsAsync(string chargepointId)
+//        {
+//            try
+//            {
+//                var authorizedClient = await GetAuthorizedHttpClientAsync();
+
+//                HttpResponseMessage response =
+//                    await authorizedClient.GetAsync(
+//                        $"/api/external/cpo/v1/chargepoint/{chargepointId}/sessions/current");
+
+//                response.EnsureSuccessStatusCode();
+
+//                string content = await response.Content.ReadAsStringAsync();
+
+//                var chargingSessions = JsonConvert.DeserializeObject<ChargingSession>(content);
+//                return chargingSessions;
+//            }
+//            catch (HttpRequestException ex)
+//            {
+//                //TODO - Log və exception'ları burada handle etmək!
+//                throw new Exception("API isteği başarısız oldu: " + ex.Message);
+//            }
+//        }
+
+//        public async Task<OperationResult<ChargePoint>> GetSingleChargerAsync(string chargepointId)
+//        {
+//            try
+//            {
+//                var authorizedClient = await GetAuthorizedHttpClientAsync();
+
+//                OperationResult<ChargePoint> singlePointResult = new OperationResult<ChargePoint>();
+
+//                HttpResponseMessage response = await authorizedClient.GetAsync($"/api/external/cpo/v1/chargepoint/{chargepointId}");
+
+//                if (response.IsSuccessStatusCode)
+//                {
+//                    var result = await response.Content.ReadAsStringAsync();
+//                    singlePointResult.Result = JsonConvert.DeserializeObject<ChargePoint>(result);
+//                    singlePointResult.Success = true;
+//                    singlePointResult.Error = null;
+//                }
+//                else
+//                {
+//                    singlePointResult.Result = null;
+//                    singlePointResult.Success = false;
+//                    singlePointResult.Error = new Error
+//                    {
+//                        Code = ((int)response.StatusCode).ToString(),
+//                        Message = $"Can't get information for id: {chargepointId}"
+//                    };
+//                }
+
+//                return singlePointResult;
+//            }
+//            catch (Exception e)
+//            {
+//                Console.WriteLine(e);
+//                throw;
+//            }
+//        }
+
+
+//        public async Task<OperationResult<ChargingSession>> StartChargingAsync(string chargepointId,
+//            StartChargingRequest request)
+//        {
+//            try
+//            {
+//                var authorizedClient = await GetAuthorizedHttpClientAsync();
+
+//                string requestJson = JsonConvert.SerializeObject(request);
+
+//                var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+
+//                HttpResponseMessage response =
+//                    await authorizedClient.PostAsync($"/api/external/cpo/v1/chargepoint/{chargepointId}/start",
+//                        content);
+
+//                response.EnsureSuccessStatusCode();
+
+//                string responseJson = await response.Content.ReadAsStringAsync();
+
+//                var result = JsonConvert.DeserializeObject<OperationResult<ChargingSession>>(responseJson);
+
+//                return result;
+//            }
+//            catch (Exception ex)
+//            {
+//                //TODO - Log və exception'ları burada handle etmək!
+//                throw new Exception("API isteği başarısız oldu: " + ex.Message);
+//            }
+//        }
+
+//        public async Task<OperationResult<ChargingSession>> StopChargingAsync(string chargepointId,
+//            StopChargingRequest request)
+//        {
+//            try
+//            {
+//                var authorizedClient = await GetAuthorizedHttpClientAsync();
+
+//                string requestJson = JsonConvert.SerializeObject(request);
+
+//                var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+
+//                HttpResponseMessage response =
+//                    await authorizedClient.PostAsync($"/api/external/cpo/v1/chargepoint/{chargepointId}/stop", content);
+
+//                string responseJson = await response.Content.ReadAsStringAsync();
+
+
+//                var result = JsonConvert.DeserializeObject<OperationResult<ChargingSession>>(responseJson);
+
+//                return result;
+//            }
+//            catch (HttpRequestException ex)
+//            {
+//                //TODO - Log və exception'ları burada handle etmək!
+//                throw new Exception("API isteği başarısız oldu: " + ex.Message);
+//            }
+//        }
+
+//    }
+
+//}
 

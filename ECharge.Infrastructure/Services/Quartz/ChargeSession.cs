@@ -26,7 +26,7 @@ namespace ECharge.Infrastructure.Services.Quartz
 
                 var session = context.Sessions.OrderByDescending(x => x.Id).FirstOrDefault(x => x.ChargerPointId == chargePointId);
 
-                if (session.Status == SessionStatus.NotCharging && !session.UpdatedTime.HasValue)
+                if (session!.Status == SessionStatus.NotCharging && !session.UpdatedTime.HasValue)
                 {
                     await chargePointApiClient.StartChargingAsync(chargePointId, new StartChargingRequest { IgnoreDelay = true });
                     session.Status = SessionStatus.Charging;

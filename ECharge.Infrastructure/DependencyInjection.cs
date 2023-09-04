@@ -25,7 +25,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var cnnString = configuration.GetConnectionString("OrkhanServer");
+        var cnnString = configuration.GetConnectionString("AliServer");
 
         services.AddScoped((x) => new DataContext(cnnString));
 

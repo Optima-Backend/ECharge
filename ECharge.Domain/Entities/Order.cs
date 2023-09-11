@@ -13,6 +13,7 @@ namespace ECharge.Domain.Entities
         public string Currency { get; set; }
         public decimal AmountCharged { get; set; }
         public PaymentStatus Status { get; set; }
+        public CableState? CableState { get; set; }
         public string MerchantOrderId { get; set; }
         public decimal AmountRefunded { get; set; }
         public string Description { get; set; }

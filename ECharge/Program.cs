@@ -13,6 +13,19 @@ internal class Program
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .Build();
 
+        builder.Services.AddCors(options =>
+        {
+            string[] origins = new string[] { "http://127.0.0.1", "http://127.0.0.1:5500" };
+
+            options.AddPolicy("CorsPolicy",
+                builder => builder
+                    .SetIsOriginAllowed(_ => true)
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials());
+
+        });
+
         builder.Services.AddInfrastructure(configuration);
 
         builder.Services.AddControllers();
@@ -54,6 +67,10 @@ internal class Program
         builder.Services.AddHttpClient();
 
         var app = builder.Build();
+
+        //app.MapHub<ChargerHub>("/chargerHub");
+
+        app.UseCors("CorsPolicy");
 
         app.UseSwagger();
 

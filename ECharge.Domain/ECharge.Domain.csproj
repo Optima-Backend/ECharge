@@ -46,6 +46,7 @@
     <None Remove="Repositories\Transaction\DTO\" />
     <None Remove="Repositories\Transaction\Query\" />
     <None Remove="Mappings\" />
+    <None Remove="DTOs\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="EVtrip\" />
@@ -86,6 +87,7 @@
     <Folder Include="Repositories\Transaction\DTO\" />
     <Folder Include="Repositories\Transaction\Query\" />
     <Folder Include="Mappings\" />
+    <Folder Include="DTOs\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

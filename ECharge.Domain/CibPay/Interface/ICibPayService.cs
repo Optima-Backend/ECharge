@@ -14,7 +14,8 @@ namespace ECharge.Domain.CibPay.Interface
         Task<CibBaseResponse<AllOrdersResponse>> GetOrderInfo(string orderId);
         Task<CibBaseResponse<AllOrdersResponse>> GetOrdersList(GetOrdersQuery query);
         Task<CibBaseResponse<CreateOrderProviderResponse>> CreateOrder(CreateOrderCommand command);
-        Task<CibBaseResponse<RefundOrderResponse>> RefundOrder(RefundOrderCommand refundOrderCommand);
+        Task<CibBaseResponse<RefundOrderResponse>> RefundOrder(RefundOrderCommand command);
+        Task<CibBaseResponse<RefundOrderResponse>> RefundSpecificAmount(RefundSpecificAmoundOrderCommand command);
     }
 }
 

@@ -2,9 +2,7 @@
 using ECharge.Domain.EVtrip.DTOs.Requests;
 using ECharge.Domain.EVtrip.Interfaces;
 using ECharge.Infrastructure.Services.DatabaseContext;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
-using System;
 using ECharge.Domain.Entities;
 using ECharge.Domain.Job.Interface;
 
@@ -49,11 +47,14 @@ namespace ECharge.Infrastructure.Services.Quartz
         {
             var providerSession = await _chargePointApiClient.StartChargingAsync(session.ChargerPointId, new StartChargingRequest { IgnoreDelay = true });
 
-            if (providerSession?.Result?.Status == "active")
+            if (providerSession != null && providerSession.Success)
             {
                 session.Status = SessionStatus.Charging;
                 session.StartDate = providerSession.Result.CreatedAt;
                 session.UpdatedTime = DateTime.Now;
+                session.ProviderSessionId = providerSession.Result.SessionId;
+                session.ProviderStatus = ProviderChargingSessionStatus.active;
+                session.EnergyConsumption = providerSession.Result.EnergyConsumption;
 
                 await _context.SaveChangesAsync();
                 return ChargeRequestStatus.StartSuccess;
@@ -75,11 +76,12 @@ namespace ECharge.Infrastructure.Services.Quartz
 
             var providerSession = await _chargePointApiClient.StopChargingAsync(session.ChargerPointId, new StopChargingRequest { SessionId = chargingSession.SessionId });
 
-            if (providerSession?.Result?.Status == "closed")
+            if (providerSession != null && providerSession.Success)
             {
                 session.Status = SessionStatus.Complated;
                 session.EndDate = providerSession.Result.ClosedAt;
                 session.UpdatedTime = DateTime.Now;
+                session.ProviderStatus = ProviderChargingSessionStatus.closed;
 
                 await _context.SaveChangesAsync();
                 return ChargeRequestStatus.StopSuccess;
@@ -95,6 +97,7 @@ namespace ECharge.Infrastructure.Services.Quartz
             session.StartDate = null;
             session.EndDate = null;
             session.UpdatedTime = DateTime.Now;
+            session.ProviderStatus = ProviderChargingSessionStatus.cancled;
 
             await _context.SaveChangesAsync();
         }

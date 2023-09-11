@@ -194,9 +194,25 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
             {
                 var endpoint = $"orders/{refundOrderCommand.OrderId}/refund";
 
+                var requestData = new { };
+
+                return await SendRequestAsync<RefundOrderResponse>(endpoint, HttpMethod.Put, requestData);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("An unexpected error occurred: " + ex.Message, ex);
+            }
+        }
+
+        public async Task<CibBaseResponse<RefundOrderResponse>> RefundSpecificAmount(RefundSpecificAmoundOrderCommand command)
+        {
+            try
+            {
+                var endpoint = $"orders/{command.OrderId}/refund";
+
                 var requestData = new
                 {
-                    //amount = refundOrderCommand.RefundAmount,
+                    amount = command.RefundAmount,
                 };
 
                 return await SendRequestAsync<RefundOrderResponse>(endpoint, HttpMethod.Put, requestData);

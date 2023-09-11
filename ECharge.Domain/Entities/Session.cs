@@ -7,6 +7,11 @@ namespace ECharge.Domain.Entities;
 [Table("ChargePointSession")]
 public class Session
 {
+    public Session()
+    {
+        CableStateHooks = new HashSet<CableStateHook>();
+    }
+
     [Key]
     public string Id { get; set; }
 
@@ -45,6 +50,19 @@ public class Session
 
     public int? MaxVoltage { get; set; }
 
+    [Required]
+    public string FCMToken { get; set; }
+
     public int? MaxAmperage { get; set; }
+
+    public double? EnergyConsumption { get; set; }
+
+    public string ProviderSessionId { get; set; }
+
+    public FinishReason? FinishReason { get; set; }
+
+    public ProviderChargingSessionStatus ProviderStatus { get; set; }
+
+    public virtual ICollection<CableStateHook> CableStateHooks { get; set; }
 
 }

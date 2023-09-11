@@ -19,6 +19,8 @@
     <None Remove="Services\ChargePointActions\" />
     <None Remove="Services\Quartz\" />
     <None Remove="Repositories\Transaction\" />
+    <None Remove="Services\SignalR\" />
+    <None Remove="Services\Firebase Notification\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Services\" />
@@ -31,6 +33,8 @@
     <Folder Include="Services\ChargePointActions\" />
     <Folder Include="Services\Quartz\" />
     <Folder Include="Repositories\Transaction\" />
+    <Folder Include="Services\SignalR\" />
+    <Folder Include="Services\Firebase Notification\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ECharge.Domain\ECharge.Domain.csproj" />
@@ -50,6 +54,7 @@
     <PackageReference Include="Quartz" Version="3.7.0" />
     <PackageReference Include="Quartz.Extensions.DependencyInjection" Version="3.7.0" />
     <PackageReference Include="Quartz.Extensions.Hosting" Version="3.7.0" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Services\CibPay\Certificate\Api\taxiapp.p12">

@@ -5,6 +5,7 @@ using ECharge.Domain.ChargePointActions.Model.PaymentStatus;
 using ECharge.Domain.CibPay.Interface;
 using ECharge.Domain.CibPay.Model;
 using ECharge.Domain.CibPay.Model.CreateOrder.Command;
+using ECharge.Domain.DTOs;
 using ECharge.Domain.Entities;
 using ECharge.Domain.Enums;
 using ECharge.Domain.EVtrip.Interfaces;
@@ -61,16 +62,15 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
             var singleChargePoint = await _chargePointApiClient.GetSingleChargerAsync(command.ChargePointId);
 
             if (!singleChargePoint.Success)
-            {
                 return new { StatusCode = HttpStatusCode.BadRequest, Message = "There is not any charge point whith that ID" };
-            }
+
+            if (singleChargePoint.Result.Status != "Available")
+                return new { StatusCode = HttpStatusCode.BadRequest, Message = "Charge point not available" };
 
             var currentSession = await _chargePointApiClient.GetChargingSessionsAsync(command.ChargePointId);
 
-            if (currentSession is not null)
-            {
+            if (currentSession != null)
                 return new { StatusCode = HttpStatusCode.BadRequest, Message = "This charge point is currently busy" };
-            }
 
             var totalMinutes = command.Duration.TotalMinutes;
 
@@ -80,7 +80,15 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
 
             var sessionId = Guid.NewGuid().ToString();
 
-            var orderProviderResponse = await _cibPayService.CreateOrder(new CreateOrderCommand { Amount = amount, UserId = command.UserId, ChargePointId = command.ChargePointId, MerchantOrderId = sessionId, Name = command.Name, Email = command.Email });
+            var orderProviderResponse = await _cibPayService.CreateOrder(new CreateOrderCommand
+            {
+                Amount = amount,
+                UserId = command.UserId,
+                ChargePointId = command.ChargePointId,
+                MerchantOrderId = sessionId,
+                Name = command.Name,
+                Email = command.Email
+            });
 
             if (orderProviderResponse.StatusCode == HttpStatusCode.Created && orderProviderResponse.Data.Orders.Any())
             {
@@ -122,7 +130,8 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
                         Order = orderEntity,
                         ChargePointName = singleChargePoint.Result.Name,
                         MaxAmperage = singleChargePoint.Result.MaxAmperage,
-                        MaxVoltage = singleChargePoint.Result.MaxVoltage
+                        MaxVoltage = singleChargePoint.Result.MaxVoltage,
+                        FCMToken = command.FCMToken
                     };
                     await _context.Sessions.AddAsync(sessionEntity);
 
@@ -156,10 +165,7 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
         {
             var providerResponse = await _cibPayService.GetOrderInfo(orderId);
 
-            if (providerResponse.StatusCode != HttpStatusCode.OK || !providerResponse.Data.Orders.Any())
-            {
-                return;
-            }
+            if (providerResponse.StatusCode != HttpStatusCode.OK || !providerResponse.Data.Orders.Any()) return;
 
             var providerOrder = providerResponse.Data.Orders.First();
             string status = providerOrder.Status;
@@ -168,36 +174,35 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
             var order = await _context.Orders
                 .FirstOrDefaultAsync(x => x.OrderId == orderId);
 
-            if (order != null)
+            if (order == null) return;
+
+            order.AmountCharged = providerOrder.AmountCharged;
+            order.AmountRefunded = providerOrder.AmountRefunded;
+            order.Status = paymentStatus;
+            order.Description = providerOrder.Description;
+            order.MerchantOrderId = providerOrder.MerchantOrderId;
+            order.Pan = providerOrder.Pan;
+            order.Updated = providerOrder.Updated;
+            order.Status = paymentStatus;
+
+            var session = _context.Sessions.FirstOrDefault(x => x.OrderId == order.Id);
+
+            if (session != null)
             {
-                order.AmountCharged = providerOrder.AmountCharged;
-                order.AmountRefunded = providerOrder.AmountRefunded;
-                order.Status = paymentStatus;
-                order.Description = providerOrder.Description;
-                order.MerchantOrderId = providerOrder.MerchantOrderId;
-                order.Pan = providerOrder.Pan;
-                order.Updated = providerOrder.Updated;
-                order.Status = paymentStatus;
+                DateTimeOffset startTime = DateTimeOffset.Now.AddMinutes(_durationForActivatingChargePoint);
+                DateTimeOffset endTime = startTime.Add(session.Duration);
 
-                var session = _context.Sessions.FirstOrDefault(x => x.OrderId == order.Id);
+                session.StartDate = startTime.DateTime;
 
-                if (session != null)
+                await _context.SaveChangesAsync();
+
+                if (providerOrder.Status == "charged")
                 {
-                    DateTimeOffset startTime = DateTimeOffset.Now.AddMinutes(_durationForActivatingChargePoint);
-                    DateTimeOffset endTime = startTime.Add(session.Duration);
+                    var factory = _serviceProvider.GetRequiredService<ISchedulerFactory>();
+                    var scheduler = await factory.GetScheduler();
 
-                    session.StartDate = startTime.DateTime;
-
-                    await _context.SaveChangesAsync();
-
-                    if (providerOrder.Status == "charged")
-                    {
-                        var factory = _serviceProvider.GetRequiredService<ISchedulerFactory>();
-                        var scheduler = await factory.GetScheduler();
-
-                        var scheduleJobs = new ScheduleJobs(scheduler);
-                        await scheduleJobs.ScheduleJob(orderId, startTime, endTime);
-                    }
+                    var scheduleJobs = new ScheduleJobs(scheduler);
+                    await scheduleJobs.ScheduleJob(session.ChargerPointId, orderId, startTime, endTime);
                 }
             }
         }
@@ -230,30 +235,42 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
             };
         }
 
-        public async Task<object> GetSessionStatus(string orderId)
+        public async Task<SessionStatusResponse> GetSessionStatus(string orderId)
         {
             if (!await _context.Orders.AnyAsync(x => x.OrderId == orderId))
             {
-                return new
+                return new SessionStatusResponse
                 {
                     StatusCode = HttpStatusCode.NotFound,
+                    ChargingStatusCode = 2,
                     Message = "Session not found"
                 };
             }
 
             var session = await _context.Sessions
-                .Include(x => x.Order)
                 .AsNoTracking()
+                .Include(x => x.Order)
                 .FirstOrDefaultAsync(x => x.Order.OrderId == orderId);
 
-            if (session.Status == SessionStatus.Charging)
+            var cableStateHook = await _context.CableStateHooks
+                .AsNoTracking()
+                .Where(x => x.SessionId == session.Id).Select(x => new CableStateHookDTO
+                {
+                    ChargePointId = x.ChargePointId,
+                    CableState = x.CableState,
+                    Connector = x.Connector,
+                    SessionId = x.SessionId,
+                    CreatedDate = x.CreatedDate
+                }).OrderByDescending(x => x.CreatedDate).FirstOrDefaultAsync();
+
+            if (session.Status == SessionStatus.Charging && session.ProviderStatus == ProviderChargingSessionStatus.active)
             {
                 var endTime = session.StartDate + session.Duration;
 
                 var remaininChargingTime = endTime - DateTime.Now;
                 var remaininChargingTimeInSeconds = remaininChargingTime.Value.TotalMilliseconds > 0 ? remaininChargingTime.Value.TotalSeconds : 0;
 
-                return new
+                return new SessionStatusResponse
                 {
                     StatusCode = HttpStatusCode.OK,
                     RemainingStartTimeInSeconds = 0,
@@ -261,34 +278,30 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
                     StartTime = session.StartDate,
                     EndTime = endTime,
                     DurationInSeconds = (int)session.Duration.TotalSeconds,
-                    ChargingStatusCode = session.Status,
+                    ChargingStatusCode = 1,
                     ChargingStatusDescription = "Charging",
                     Message = "Session is active. Vehicle is charging",
                     ChargePointId = session.ChargerPointId,
                     PricePerHour = session.PricePerHour,
                     MaxAmperage = session.MaxAmperage,
                     MaxVoltage = session.MaxVoltage,
-                    Name = session.ChargePointName
+                    Name = session.ChargePointName,
+                    CableStatus = session.Order.CableState,
+                    LastCableState = cableStateHook ?? default
                 };
             }
-            else if ((session.Status == SessionStatus.NotCharging || session.Status == SessionStatus.Complated) && session.Order.Status == PaymentStatus.Charged)
+            else if (session.Status == SessionStatus.NotCharging && session.Order.Status == PaymentStatus.Charged)
             {
-                TimeSpan remainingStartTime = default;
-
-                if (session.Status == SessionStatus.NotCharging)
-                {
-                    var paymentDateTime = session.StartDate.Value;
-                    var diff = paymentDateTime - DateTime.Now;
-                    remainingStartTime = diff.TotalMilliseconds > 0 ? diff : default;
-                }
+                var paymentDateTime = session.StartDate.Value;
+                var diff = paymentDateTime - DateTime.Now;
+                TimeSpan remainingStartTime = diff.TotalMilliseconds > 0 ? diff : default;
 
                 var endTime = session.StartDate + session.Duration;
                 TimeSpan remainingTime = default;
-                string chargingStatus = session.Status == SessionStatus.NotCharging ? "NotCharging" : "Complated";
-                string message = session.Status == SessionStatus.NotCharging ? "Session will start at start time" : "Session has complated";
+                string message = "Session will start at start time";
                 string message_2 = "Charge point is activating...";
 
-                return new
+                return new SessionStatusResponse
                 {
                     StatusCode = HttpStatusCode.OK,
                     RemainingStartTimeInSeconds = (int)remainingStartTime.TotalSeconds,
@@ -296,50 +309,155 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
                     StartTime = session.StartDate,
                     EndTime = endTime,
                     DurationInSeconds = (int)session.Duration.TotalSeconds,
-                    ChargingStatusCode = session.Status,
-                    ChargingStatusDescription = chargingStatus,
+                    ChargingStatusCode = 0,
+                    ChargingStatusDescription = "NotCharging",
                     Message = remainingStartTime.TotalMilliseconds >= 0 ? message : message_2,
                     ChargePointId = session.ChargerPointId,
                     PricePerHour = session.PricePerHour,
                     MaxAmperage = session.MaxAmperage,
                     MaxVoltage = session.MaxVoltage,
-                    Name = session.ChargePointName
+                    Name = session.ChargePointName,
+                    CableStatus = session.Order.CableState,
+                    LastCableState = cableStateHook ?? default
+                };
+            }
+            else if (session.Status == SessionStatus.Complated && session.Order.Status == PaymentStatus.Charged)
+            {
+                TimeSpan remainingStartTime = default;
+
+                var endTime = session.StartDate + session.Duration;
+                TimeSpan remainingTime = default;
+                string message = "Session has complated";
+                string message_2 = "Charge point is activating...";
+
+                return new SessionStatusResponse
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    RemainingStartTimeInSeconds = (int)remainingStartTime.TotalSeconds,
+                    RemainingChargingTimeInSeconds = (int)remainingTime.TotalSeconds,
+                    StartTime = session.StartDate,
+                    EndTime = endTime,
+                    DurationInSeconds = (int)session.Duration.TotalSeconds,
+                    ChargingStatusCode = 3,
+                    ChargingStatusDescription = "Complated",
+                    Message = remainingStartTime.TotalMilliseconds >= 0 ? message : message_2,
+                    ChargePointId = session.ChargerPointId,
+                    PricePerHour = session.PricePerHour,
+                    MaxAmperage = session.MaxAmperage,
+                    MaxVoltage = session.MaxVoltage,
+                    Name = session.ChargePointName,
+                    CableStatus = session.Order.CableState,
+                    LastCableState = cableStateHook ?? default
                 };
             }
             else if (session.Order.Status != PaymentStatus.Charged && session.Order.Status == PaymentStatus.New)
             {
-                return new
+                return new SessionStatusResponse
                 {
-                    StatusCode = HttpStatusCode.PaymentRequired,
+                    StatusCode = HttpStatusCode.OK,
                     ChargingStatusCode = 4,
-                    Message = "This order has not been paid yet"
+                    Message = "This order has not been paid yet",
+                    StartTime = session.StartDate,
+                    EndTime = session.EndDate,
+                    MaxAmperage = session.MaxAmperage,
+                    MaxVoltage = session.MaxVoltage,
+                    ChargingStatusDescription = "Unpaid",
+                    ChargePointId = session.ChargerPointId,
+                    Name = session.Name,
+                    DurationInSeconds = (int)session.Duration.TotalSeconds,
+                    PricePerHour = session.PricePerHour,
+                    CableStatus = session.Order.CableState,
+                    LastCableState = cableStateHook ?? default
                 };
             }
             else if (session.Status == SessionStatus.Canceled && session.Order.Status == PaymentStatus.Refunded)
             {
-                return new
+                return new SessionStatusResponse
                 {
-                    StatusCode = HttpStatusCode.InternalServerError,
+                    StatusCode = HttpStatusCode.OK,
                     ChargingStatusCode = 5,
-                    Message = "An issue occurred while activating the charge point, and your money has been refunded."
+                    Message = "An issue occurred while activating the charge point, and your money has been refunded.",
+                    StartTime = session.StartDate,
+                    EndTime = session.EndDate,
+                    MaxAmperage = session.MaxAmperage,
+                    MaxVoltage = session.MaxVoltage,
+                    ChargingStatusDescription = "Cancaled with refund",
+                    ChargePointId = session.ChargerPointId,
+                    Name = session.Name,
+                    CableStatus = session.Order.CableState,
+                    DurationInSeconds = (int)session.Duration.TotalSeconds,
+                    PricePerHour = session.PricePerHour,
+                    LastCableState = cableStateHook ?? default
                 };
             }
             else if (session.Status == SessionStatus.Canceled && session.Order.Status == PaymentStatus.Charged)
             {
-                return new
+                return new SessionStatusResponse
                 {
-                    StatusCode = HttpStatusCode.InternalServerError,
+                    StatusCode = HttpStatusCode.OK,
                     ChargingStatusCode = 6,
-
-                    Message = "There was an issue during the activation of the Charge Point. Your money will be refunded shortly."
+                    Message = "There was an issue during the activation of the Charge Point. Your money will be refunded shortly.",
+                    StartTime = session.StartDate,
+                    EndTime = session.EndDate,
+                    MaxAmperage = session.MaxAmperage,
+                    MaxVoltage = session.MaxVoltage,
+                    ChargingStatusDescription = "Cancaled with refund pending",
+                    ChargePointId = session.ChargerPointId,
+                    Name = session.Name,
+                    CableStatus = session.Order.CableState,
+                    DurationInSeconds = (int)session.Duration.TotalSeconds,
+                    PricePerHour = session.PricePerHour,
+                    LastCableState = cableStateHook ?? default
+                };
+            }
+            else if (session.Status == SessionStatus.WebhookCanceled && session.Order.Status == PaymentStatus.Refunded && session.Order.CableState.HasValue && session.Order.CableState == CableState.A)
+            {
+                return new SessionStatusResponse
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    ChargingStatusCode = 8,
+                    Message = "A session was finished because a cable was removed for more then 30 seconds, your remaining balance will be refunded shortly.",
+                    StartTime = session.StartDate,
+                    EndTime = session.EndDate,
+                    MaxAmperage = session.MaxAmperage,
+                    MaxVoltage = session.MaxVoltage,
+                    ChargingStatusDescription = "Canceled with refund",
+                    ChargePointId = session.ChargerPointId,
+                    Name = session.Name,
+                    CableStatus = session.Order.CableState,
+                    DurationInSeconds = (int)session.Duration.TotalSeconds,
+                    PricePerHour = session.PricePerHour,
+                    LastCableState = cableStateHook ?? default
+                };
+            }
+            else if (session.Status == SessionStatus.WebhookCanceled && session.Order.Status == PaymentStatus.Charged && session.Order.CableState.HasValue && session.Order.CableState == CableState.A)
+            {
+                return new SessionStatusResponse
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    ChargingStatusCode = 9,
+                    Message = "A session was finished because a cable was removed for more then 30 seconds, your remaining balance will not be refunded because your remaining charge time is less that 5 minutes.",
+                    StartTime = session.StartDate,
+                    EndTime = session.EndDate,
+                    MaxAmperage = session.MaxAmperage,
+                    MaxVoltage = session.MaxVoltage,
+                    ChargePointId = session.ChargerPointId,
+                    ChargingStatusDescription = "Canceled without refund",
+                    Name = session.Name,
+                    CableStatus = session.Order.CableState,
+                    DurationInSeconds = (int)session.Duration.TotalSeconds,
+                    PricePerHour = session.PricePerHour,
+                    LastCableState = cableStateHook ?? default
                 };
             }
 
-            return new
+            return new SessionStatusResponse
             {
                 StatusCode = HttpStatusCode.InternalServerError,
                 ChargingStatusCode = 7,
-                Message = "Something went wrong"
+                ChargingStatusDescription = "Internal Server error",
+                Message = "Something went wrong",
+                LastCableState = cableStateHook ?? default
             };
 
         }

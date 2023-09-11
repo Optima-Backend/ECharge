@@ -26,8 +26,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var cnnString = configuration.GetConnectionString("OrkhanServer");
-        //var cnnString = configuration.GetConnectionString("Default");
+        //var cnnString = configuration.GetConnectionString("OrkhanServer");
+        var cnnString = configuration.GetConnectionString("Default");
         services.AddScoped((x) => new DataContext(cnnString));
 
         //services.AddScoped<DataContext>();
@@ -43,6 +43,8 @@ public static class DependencyInjection
             x.UseInMemoryStore();
             x.UseDefaultThreadPool(10);
         });
+
+        //services.AddSignalR();
 
         services.AddAutoMapper(typeof(MappingProfile).Assembly);
 

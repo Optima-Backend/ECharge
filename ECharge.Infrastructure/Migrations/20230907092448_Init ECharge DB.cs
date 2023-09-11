@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ECharge.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitDb : Migration
+    public partial class InitEChargeDB : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -23,6 +23,7 @@ namespace ECharge.Infrastructure.Migrations
                     Currency = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     AmountCharged = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false),
+                    CableState = table.Column<int>(type: "int", nullable: true),
                     MerchantOrderId = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     AmountRefunded = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -54,7 +55,12 @@ namespace ECharge.Infrastructure.Migrations
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ChargePointName = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     MaxVoltage = table.Column<int>(type: "int", nullable: true),
-                    MaxAmperage = table.Column<int>(type: "int", nullable: true)
+                    FCMToken = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    MaxAmperage = table.Column<int>(type: "int", nullable: true),
+                    EnergyConsumption = table.Column<double>(type: "float", nullable: true),
+                    ProviderSessionId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    FinishReason = table.Column<int>(type: "int", nullable: true),
+                    ProviderStatus = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -67,15 +73,77 @@ namespace ECharge.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "CableStateHooks",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ChargePointId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SessionId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    Connector = table.Column<int>(type: "int", nullable: false),
+                    CableState = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CableStateHooks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CableStateHooks_ChargePointSession_SessionId",
+                        column: x => x.SessionId,
+                        principalTable: "ChargePointSession",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "OrderStatusChangedHooks",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ChargerId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Connector = table.Column<int>(type: "int", nullable: false),
+                    OrderUuid = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    FinishReason = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    SessionId = table.Column<string>(type: "nvarchar(450)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OrderStatusChangedHooks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_OrderStatusChangedHooks_ChargePointSession_SessionId",
+                        column: x => x.SessionId,
+                        principalTable: "ChargePointSession",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CableStateHooks_SessionId",
+                table: "CableStateHooks",
+                column: "SessionId");
+
             migrationBuilder.CreateIndex(
                 name: "IX_ChargePointSession_OrderId",
                 table: "ChargePointSession",
                 column: "OrderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OrderStatusChangedHooks_SessionId",
+                table: "OrderStatusChangedHooks",
+                column: "SessionId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "CableStateHooks");
+
+            migrationBuilder.DropTable(
+                name: "OrderStatusChangedHooks");
+
             migrationBuilder.DropTable(
                 name: "ChargePointSession");
 

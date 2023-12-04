@@ -19,7 +19,9 @@ namespace ECharge.Infrastructure.Services.Quartz
             _context = context;
         }
 
-        public async Task<ChargeRequestStatus> Execute(string orderId, bool tryAgain)
+        public async Task<ChargeRequestStatus> Execute(string orderId, bool tryAgainForStart, bool tryAgainForStop,
+            bool tryAgainForWebHookStatusB, bool isWebHookStatusB, bool tryAgainForStopByClient,
+            bool isStoppedByClient)
         {
             var session = await _context.Sessions
                 .Include(x => x.Order)
@@ -28,26 +30,27 @@ namespace ECharge.Infrastructure.Services.Quartz
             if (session == null)
                 return ChargeRequestStatus.Error;
 
-            if ((session.Status == SessionStatus.NotCharging && !session.UpdatedTime.HasValue) || tryAgain)
+            if ((session.Status == SessionStatus.NotCharging && !session.UpdatedTime.HasValue && !isWebHookStatusB &&
+                 !isStoppedByClient) || tryAgainForStart) 
             {
                 return await HandleStartCharging(session);
             }
-            else if ((session.Status == SessionStatus.Charging && session.UpdatedTime.HasValue) || tryAgain)
-            {
-                return await HandleStopCharging(session);
-            }
-            else
-            {
-                return ChargeRequestStatus.Error;
-            }
 
+            if ((session.Status == SessionStatus.Charging && session.UpdatedTime.HasValue) || tryAgainForStop ||
+                tryAgainForWebHookStatusB || isWebHookStatusB || tryAgainForStopByClient || isStoppedByClient) 
+            {
+                return await HandleStopCharging(session, isWebHookStatusB, isStoppedByClient);
+            }
+            
+            return ChargeRequestStatus.Error;
         }
 
         private async Task<ChargeRequestStatus> HandleStartCharging(Session session)
         {
-            var providerSession = await _chargePointApiClient.StartChargingAsync(session.ChargerPointId, new StartChargingRequest { IgnoreDelay = true });
+            var providerSession = await _chargePointApiClient.StartChargingAsync(session.ChargerPointId,
+                new StartChargingRequest { IgnoreDelay = true });
 
-            if (providerSession != null && providerSession.Success)
+            if (providerSession is {Result: not null, Success: true })
             {
                 session.Status = SessionStatus.Charging;
                 session.StartDate = providerSession.Result.CreatedAt;
@@ -59,12 +62,11 @@ namespace ECharge.Infrastructure.Services.Quartz
                 await _context.SaveChangesAsync();
                 return ChargeRequestStatus.StartSuccess;
             }
-
             await HandleChargeFailure(session);
             return ChargeRequestStatus.StartCanceled;
         }
 
-        private async Task<ChargeRequestStatus> HandleStopCharging(Session session)
+        private async Task<ChargeRequestStatus> HandleStopCharging(Session session, bool isWebHookStatusB, bool isStoppedByClient)
         {
             var chargingSession = await _chargePointApiClient.GetChargingSessionsAsync(session.ChargerPointId);
 
@@ -74,14 +76,28 @@ namespace ECharge.Infrastructure.Services.Quartz
                 return ChargeRequestStatus.StopCanceled;
             }
 
-            var providerSession = await _chargePointApiClient.StopChargingAsync(session.ChargerPointId, new StopChargingRequest { SessionId = chargingSession.SessionId });
+            var providerSession = await _chargePointApiClient.StopChargingAsync(session.ChargerPointId,
+                new StopChargingRequest { SessionId = chargingSession.SessionId });
 
-            if (providerSession != null && providerSession.Success)
+            if (providerSession is { Success: true })
             {
-                session.Status = SessionStatus.Complated;
+                if (isWebHookStatusB)
+                {
+                    session.Status = SessionStatus.WebhookCanceled;
+                    session.ProviderStatus = ProviderChargingSessionStatus.closed;
+                }
+                else if (isStoppedByClient)
+                {
+                    session.StoppedByClient = true;
+                }
+                else
+                {
+                    session.Status = SessionStatus.Complated;
+                    session.ProviderStatus = ProviderChargingSessionStatus.closed;
+                }
+
                 session.EndDate = providerSession.Result.ClosedAt;
                 session.UpdatedTime = DateTime.Now;
-                session.ProviderStatus = ProviderChargingSessionStatus.closed;
 
                 await _context.SaveChangesAsync();
                 return ChargeRequestStatus.StopSuccess;

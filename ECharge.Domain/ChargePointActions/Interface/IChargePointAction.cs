@@ -9,6 +9,7 @@ namespace ECharge.Domain.ChargePointActions.Interface
         Task PaymentHandler(string orderId);
         Task<PaymentStatusResponse> GetPaymentStatus(string orderId);
         Task<SessionStatusResponse> GetSessionStatus(string orderId);
+        Task StopByClient(string orderId);
     }
 }
 

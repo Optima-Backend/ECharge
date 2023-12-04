@@ -84,8 +84,6 @@
     <Folder Include="ChargePointActions\Model\PaymentStatus\" />
     <Folder Include="Repositories\Transaction\" />
     <Folder Include="Repositories\Transaction\Interface\" />
-    <Folder Include="Repositories\Transaction\DTO\" />
-    <Folder Include="Repositories\Transaction\Query\" />
     <Folder Include="Mappings\" />
     <Folder Include="DTOs\" />
   </ItemGroup>

@@ -7,7 +7,7 @@ namespace ECharge.Domain.Entities
         [Key]
         public int Id { get; set; }
         public string ChargePointId { get; set; }
-        public string SessionId { get; set; }
+        public string? SessionId { get; set; }
         public int Connector { get; set; }
         public string CableState { get; set; }
         public DateTime CreatedDate { get; set; }

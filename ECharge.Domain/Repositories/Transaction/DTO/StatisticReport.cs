@@ -1,12 +1,13 @@
+using ECharge.Domain.CibPay.Model;
+
 namespace ECharge.Domain.Repositories.Transaction.DTO;
 
-public class StatisticReportDTO
+public class StatisticReport
 {
     public string ChargePointId { get; set; }
     public string ChargePointName { get; set; }
-    public int TotalDurationInMinutes { get; set; }
-    public int TotalProfit { get; set; }
+    public long TotalDurationInMinutes { get; set; }
+    public decimal TotalProfit { get; set; }
     public int TotalTransactions { get; set; }
-    public AdminTransactionDTO Transactions { get; set; }
     
 }

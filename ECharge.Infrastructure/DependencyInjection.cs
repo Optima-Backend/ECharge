@@ -27,10 +27,10 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         //var cnnString = configuration.GetConnectionString("OrkhanServer");
-        var cnnString = configuration.GetConnectionString("Default");
-        services.AddScoped((x) => new DataContext(cnnString));
+        //var cnnString = configuration.GetConnectionString("Default");
+        //services.AddScoped((x) => new DataContext(cnnString));
 
-        //services.AddScoped<DataContext>();
+        services.AddScoped<DataContext>();
 
         services.AddScoped<IChargeSession, ChargeSession>();
 
@@ -42,6 +42,7 @@ public static class DependencyInjection
         {
             x.UseInMemoryStore();
             x.UseDefaultThreadPool(10);
+            x.SchedulerName = "echarge_actions";
         });
 
         //services.AddSignalR();

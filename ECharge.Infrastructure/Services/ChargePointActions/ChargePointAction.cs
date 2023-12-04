@@ -9,6 +9,7 @@ using ECharge.Domain.DTOs;
 using ECharge.Domain.Entities;
 using ECharge.Domain.Enums;
 using ECharge.Domain.EVtrip.Interfaces;
+using ECharge.Domain.Job.Interface;
 using ECharge.Infrastructure.Services.DatabaseContext;
 using ECharge.Infrastructure.Services.Quartz;
 using Microsoft.EntityFrameworkCore;
@@ -24,16 +25,22 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
         private readonly DataContext _context;
         private readonly IServiceProvider _serviceProvider;
         private readonly IChargePointApiClient _chargePointApiClient;
+        private readonly IChargeSession _chargeSession;
+        private readonly DataContext _dataContext;
         private readonly string _cibPayBaseUrl;
         private readonly byte _durationForActivatingChargePoint;
 
-        public ChargePointAction(ICibPayService cibPayService, DataContext context, IServiceProvider serviceProvider, IChargePointApiClient chargePointApiClient, IConfiguration configuration)
+        public ChargePointAction(ICibPayService cibPayService, DataContext context, IServiceProvider serviceProvider,
+            IChargePointApiClient chargePointApiClient, IConfiguration configuration, IChargeSession chargeSession,
+            DataContext dataContext)
         {
             _cibPayService = cibPayService;
             _context = context;
             _serviceProvider = serviceProvider;
             _chargePointApiClient = chargePointApiClient;
-            _durationForActivatingChargePoint = byte.Parse(configuration["SessionConfig:DurationForActivatingChargePoint"]);
+            _chargeSession = chargeSession;
+            _dataContext = dataContext;
+            _durationForActivatingChargePoint = byte.Parse(configuration["SessionConfig:DurationForActivatingChargePoint"]!);
             _cibPayBaseUrl = configuration["CibPay:PaymentUrl"];
         }
 
@@ -189,20 +196,15 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
 
             if (session != null)
             {
-                DateTimeOffset startTime = DateTimeOffset.Now.AddMinutes(_durationForActivatingChargePoint);
-                DateTimeOffset endTime = startTime.Add(session.Duration);
-
-                session.StartDate = startTime.DateTime;
-
                 await _context.SaveChangesAsync();
 
                 if (providerOrder.Status == "charged")
                 {
                     var factory = _serviceProvider.GetRequiredService<ISchedulerFactory>();
-                    var scheduler = await factory.GetScheduler();
+                    var scheduler = await factory.GetScheduler("echarge_actions");
 
                     var scheduleJobs = new ScheduleJobs(scheduler);
-                    await scheduleJobs.ScheduleJob(session.ChargerPointId, orderId, startTime, endTime);
+                    await scheduleJobs.ScheduleJob(session.Id);
                 }
             }
         }
@@ -241,9 +243,9 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
             {
                 return new SessionStatusResponse
                 {
-                    StatusCode = HttpStatusCode.NotFound,
                     ChargingStatusCode = 2,
-                    Message = "Session not found"
+                    Message = "Sessiya tapılmadı",
+                    HasProblem = true,
                 };
             }
 
@@ -263,203 +265,314 @@ namespace ECharge.Infrastructure.Services.ChargePointActions
                     CreatedDate = x.CreatedDate
                 }).OrderByDescending(x => x.CreatedDate).FirstOrDefaultAsync();
 
-            if (session.Status == SessionStatus.Charging && session.ProviderStatus == ProviderChargingSessionStatus.active)
+            var orderStatusChangedHooks =
+                await _dataContext.OrderStatusChangedHooks.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.SessionId == session.Id);
+
+            var currentSessionOnThisChargePoint = await _chargePointApiClient.GetChargingSessionsAsync(session.ChargerPointId);
+
+            if (session.Status == SessionStatus.NotCharging && session.Order.Status == PaymentStatus.Charged)
             {
                 var endTime = session.StartDate + session.Duration;
 
-                var remaininChargingTime = endTime - DateTime.Now;
-                var remaininChargingTimeInSeconds = remaininChargingTime.Value.TotalMilliseconds > 0 ? remaininChargingTime.Value.TotalSeconds : 0;
-
                 return new SessionStatusResponse
                 {
-                    StatusCode = HttpStatusCode.OK,
-                    RemainingStartTimeInSeconds = 0,
-                    RemainingChargingTimeInSeconds = (int)remaininChargingTimeInSeconds,
-                    StartTime = session.StartDate,
-                    EndTime = endTime,
-                    DurationInSeconds = (int)session.Duration.TotalSeconds,
-                    ChargingStatusCode = 1,
-                    ChargingStatusDescription = "Charging",
-                    Message = "Session is active. Vehicle is charging",
-                    ChargePointId = session.ChargerPointId,
-                    PricePerHour = session.PricePerHour,
-                    MaxAmperage = session.MaxAmperage,
-                    MaxVoltage = session.MaxVoltage,
-                    Name = session.ChargePointName,
-                    CableStatus = session.Order.CableState,
-                    LastCableState = cableStateHook ?? default
-                };
-            }
-            else if (session.Status == SessionStatus.NotCharging && session.Order.Status == PaymentStatus.Charged)
-            {
-                var paymentDateTime = session.StartDate.Value;
-                var diff = paymentDateTime - DateTime.Now;
-                TimeSpan remainingStartTime = diff.TotalMilliseconds > 0 ? diff : default;
-
-                var endTime = session.StartDate + session.Duration;
-                TimeSpan remainingTime = default;
-                string message = "Session will start at start time";
-                string message_2 = "Charge point is activating...";
-
-                return new SessionStatusResponse
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    RemainingStartTimeInSeconds = (int)remainingStartTime.TotalSeconds,
-                    RemainingChargingTimeInSeconds = (int)remainingTime.TotalSeconds,
+                    Timer = null,
                     StartTime = session.StartDate,
                     EndTime = endTime,
                     DurationInSeconds = (int)session.Duration.TotalSeconds,
                     ChargingStatusCode = 0,
-                    ChargingStatusDescription = "NotCharging",
-                    Message = remainingStartTime.TotalMilliseconds >= 0 ? message : message_2,
+                    ChargingStatusDescription = "Aktivasiya...",
+                    Message = "Charge Box aktiv edilir, zəhmət olmasa biraz gözləyin",
                     ChargePointId = session.ChargerPointId,
                     PricePerHour = session.PricePerHour,
                     MaxAmperage = session.MaxAmperage,
-                    MaxVoltage = session.MaxVoltage,
+                    MaxVoltage = 22,
+                    HasProblem = false,
                     Name = session.ChargePointName,
                     CableStatus = session.Order.CableState,
                     LastCableState = cableStateHook ?? default
                 };
             }
-            else if (session.Status == SessionStatus.Complated && session.Order.Status == PaymentStatus.Charged)
-            {
-                TimeSpan remainingStartTime = default;
 
+            if (session.Status == SessionStatus.Charging &&
+                session.ProviderStatus == ProviderChargingSessionStatus.active &&
+                currentSessionOnThisChargePoint != null && currentSessionOnThisChargePoint.Status ==
+                ProviderChargingSessionStatus.active.ToString())
+            {
+                var message = string.Empty;
+                string description = string.Empty;
+                
                 var endTime = session.StartDate + session.Duration;
-                TimeSpan remainingTime = default;
-                string message = "Session has complated";
-                string message_2 = "Charge point is activating...";
+
+                int? timer = null;
+
+                bool hasProblem = true;
+
+                if (session.Order.CableState.HasValue)
+                {
+                    if (session.Order.CableState == CableState.A)
+                    {
+                        var diff = cableStateHook.CreatedDate.AddMinutes(3) - DateTime.Now;
+                        timer = (int?)diff.TotalMilliseconds > 0 ? (int?)diff.TotalSeconds : null;
+                        message = "Kabel bağlantısını bərpa etmək üçün 3 dəqiqə vaxtınız var";
+                        description = "Kabel bağlantı xətası";
+                    }
+                    else if (session.Order.CableState == CableState.B)
+                    {
+                        var diff = cableStateHook.CreatedDate.AddMinutes(2) - DateTime.Now;
+                        timer = (int?)diff.TotalMilliseconds > 0 ? (int?)diff.TotalSeconds : null;
+                        message = "Avtomobil ilə Charge Box arasında əlaqə kəsilib, 2 dəqiqə ərzində sessiya sonlandırılacaq";
+                        description = "Əlaqə xətası";
+                    }
+                    else if (session.Order.CableState == CableState.E || session.Order.CableState == CableState.F || session.Order.CableState == CableState.D)
+                    {
+                        var diff = cableStateHook.CreatedDate.AddMinutes(1) - DateTime.Now;
+                        timer = (int?)diff.TotalMilliseconds > 0 ? (int?)diff.TotalSeconds : null;
+                        message = "Bilinməyən xəta, 1 dəqiqə ərzində sessiya sonlandırılacaq";
+                        description = "Bilinməyən xəta";
+                    }
+                    else if (session.Order.CableState == CableState.C)
+                    {
+                        var diff = endTime - DateTime.Now;
+                        timer = (int?)diff.Value.TotalMilliseconds > 0 ? (int?)diff.Value.TotalSeconds : null;
+                        message = "Sessiya davam edir. Nəqliyyat vasitəsi şarj olur";
+                        hasProblem = false;
+                        description = "Şarj edilir";
+                    }
+                }
+                else
+                {
+                    var diff = endTime - DateTime.Now;
+                    timer = (int?)diff.Value.TotalMilliseconds > 0 ? (int?)diff.Value.TotalSeconds : null;
+                    message = "Kabel ilə avtomobil arasında əlaqəni təmin edin";
+                    description = "Əlaqə xətası";
+                }
 
                 return new SessionStatusResponse
                 {
-                    StatusCode = HttpStatusCode.OK,
-                    RemainingStartTimeInSeconds = (int)remainingStartTime.TotalSeconds,
-                    RemainingChargingTimeInSeconds = (int)remainingTime.TotalSeconds,
+                    Timer = (int)timer,
+                    StartTime = session.StartDate,
+                    EndTime = endTime,
+                    DurationInSeconds = (int)session.Duration.TotalSeconds,
+                    ChargingStatusCode = 1,
+                    ChargingStatusDescription = description,
+                    Message = message,
+                    ChargePointId = session.ChargerPointId,
+                    PricePerHour = session.PricePerHour,
+                    MaxAmperage = session.MaxAmperage,
+                    MaxVoltage = 22,
+                    Name = session.ChargePointName,
+                    HasProblem = hasProblem,
+                    CableStatus = session.Order.CableState,
+                    LastCableState = cableStateHook ?? default
+                };
+            }
+
+            if (session.Status == SessionStatus.Charging && session.ProviderStatus == ProviderChargingSessionStatus.active && currentSessionOnThisChargePoint == null)
+            {
+                var endTime = session.StartDate + session.Duration;
+
+                return new SessionStatusResponse
+                {
+                    Timer = null,
+                    StartTime = session.StartDate,
+                    EndTime = endTime,
+                    DurationInSeconds = (int)session.Duration.TotalSeconds,
+                    ChargingStatusCode = 1,
+                    ChargingStatusDescription = "Deaktivasiya",
+                    Message = "Charge box deaktiv edilir, zəhmət olmasa biraz gözləyin",
+                    ChargePointId = session.ChargerPointId,
+                    PricePerHour = session.PricePerHour,
+                    MaxAmperage = session.MaxAmperage,
+                    MaxVoltage = 22,
+                    Name = session.ChargePointName,
+                    HasProblem = false,
+                    CableStatus = session.Order.CableState,
+                    LastCableState = cableStateHook ?? default
+                };
+            }
+
+            if (session.Status == SessionStatus.Complated && session.Order.Status == PaymentStatus.Charged)
+            {
+                var endTime = session.StartDate + session.Duration;
+                string message = "Avtomobilin şarj prosesi uğurla başa çatdı";
+
+                return new SessionStatusResponse
+                {
+                    Timer = null,
                     StartTime = session.StartDate,
                     EndTime = endTime,
                     DurationInSeconds = (int)session.Duration.TotalSeconds,
                     ChargingStatusCode = 3,
-                    ChargingStatusDescription = "Complated",
-                    Message = remainingStartTime.TotalMilliseconds >= 0 ? message : message_2,
+                    ChargingStatusDescription = "Uğurlu əməliyyat",
+                    Message = message,
                     ChargePointId = session.ChargerPointId,
                     PricePerHour = session.PricePerHour,
                     MaxAmperage = session.MaxAmperage,
-                    MaxVoltage = session.MaxVoltage,
+                    MaxVoltage = 22,
                     Name = session.ChargePointName,
+                    HasProblem = false,
                     CableStatus = session.Order.CableState,
-                    LastCableState = cableStateHook ?? default
-                };
-            }
-            else if (session.Order.Status != PaymentStatus.Charged && session.Order.Status == PaymentStatus.New)
-            {
-                return new SessionStatusResponse
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    ChargingStatusCode = 4,
-                    Message = "This order has not been paid yet",
-                    StartTime = session.StartDate,
-                    EndTime = session.EndDate,
-                    MaxAmperage = session.MaxAmperage,
-                    MaxVoltage = session.MaxVoltage,
-                    ChargingStatusDescription = "Unpaid",
-                    ChargePointId = session.ChargerPointId,
-                    Name = session.Name,
-                    DurationInSeconds = (int)session.Duration.TotalSeconds,
-                    PricePerHour = session.PricePerHour,
-                    CableStatus = session.Order.CableState,
-                    LastCableState = cableStateHook ?? default
-                };
-            }
-            else if (session.Status == SessionStatus.Canceled && session.Order.Status == PaymentStatus.Refunded)
-            {
-                return new SessionStatusResponse
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    ChargingStatusCode = 5,
-                    Message = "An issue occurred while activating the charge point, and your money has been refunded.",
-                    StartTime = session.StartDate,
-                    EndTime = session.EndDate,
-                    MaxAmperage = session.MaxAmperage,
-                    MaxVoltage = session.MaxVoltage,
-                    ChargingStatusDescription = "Cancaled with refund",
-                    ChargePointId = session.ChargerPointId,
-                    Name = session.Name,
-                    CableStatus = session.Order.CableState,
-                    DurationInSeconds = (int)session.Duration.TotalSeconds,
-                    PricePerHour = session.PricePerHour,
-                    LastCableState = cableStateHook ?? default
-                };
-            }
-            else if (session.Status == SessionStatus.Canceled && session.Order.Status == PaymentStatus.Charged)
-            {
-                return new SessionStatusResponse
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    ChargingStatusCode = 6,
-                    Message = "There was an issue during the activation of the Charge Point. Your money will be refunded shortly.",
-                    StartTime = session.StartDate,
-                    EndTime = session.EndDate,
-                    MaxAmperage = session.MaxAmperage,
-                    MaxVoltage = session.MaxVoltage,
-                    ChargingStatusDescription = "Cancaled with refund pending",
-                    ChargePointId = session.ChargerPointId,
-                    Name = session.Name,
-                    CableStatus = session.Order.CableState,
-                    DurationInSeconds = (int)session.Duration.TotalSeconds,
-                    PricePerHour = session.PricePerHour,
-                    LastCableState = cableStateHook ?? default
-                };
-            }
-            else if (session.Status == SessionStatus.WebhookCanceled && session.Order.Status == PaymentStatus.Refunded && session.Order.CableState.HasValue && session.Order.CableState == CableState.A)
-            {
-                return new SessionStatusResponse
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    ChargingStatusCode = 8,
-                    Message = "A session was finished because a cable was removed for more then 30 seconds, your remaining balance will be refunded shortly.",
-                    StartTime = session.StartDate,
-                    EndTime = session.EndDate,
-                    MaxAmperage = session.MaxAmperage,
-                    MaxVoltage = session.MaxVoltage,
-                    ChargingStatusDescription = "Canceled with refund",
-                    ChargePointId = session.ChargerPointId,
-                    Name = session.Name,
-                    CableStatus = session.Order.CableState,
-                    DurationInSeconds = (int)session.Duration.TotalSeconds,
-                    PricePerHour = session.PricePerHour,
-                    LastCableState = cableStateHook ?? default
-                };
-            }
-            else if (session.Status == SessionStatus.WebhookCanceled && session.Order.Status == PaymentStatus.Charged && session.Order.CableState.HasValue && session.Order.CableState == CableState.A)
-            {
-                return new SessionStatusResponse
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    ChargingStatusCode = 9,
-                    Message = "A session was finished because a cable was removed for more then 30 seconds, your remaining balance will not be refunded because your remaining charge time is less that 5 minutes.",
-                    StartTime = session.StartDate,
-                    EndTime = session.EndDate,
-                    MaxAmperage = session.MaxAmperage,
-                    MaxVoltage = session.MaxVoltage,
-                    ChargePointId = session.ChargerPointId,
-                    ChargingStatusDescription = "Canceled without refund",
-                    Name = session.Name,
-                    CableStatus = session.Order.CableState,
-                    DurationInSeconds = (int)session.Duration.TotalSeconds,
-                    PricePerHour = session.PricePerHour,
                     LastCableState = cableStateHook ?? default
                 };
             }
 
+            if (session.Status == SessionStatus.WebhookCanceled)
+            {
+                var message = string.Empty;
+                var description = string.Empty;
+
+                if (!session.Order.CableState.HasValue && session.Order.CableState != CableState.C)
+                {
+                    message = "Kabel bağlantısı təmin edilmədiyi üçün sessiya bitirildi və qalıq balansınız geri qaytarıldı";
+                    description = "Ləğv və geri ödəniş";
+                }
+
+                if (session.Order.CableState.HasValue)
+                {
+                    if (session.Order.Status == PaymentStatus.Charged)
+                    {
+                        if (session.Order.CableState == CableState.A)
+                        {
+                            message = "3 dəqiqədən çox kabel bağlantısı olmadığı üçün sessiya bitirildi və qalan şarj zamanı 5 dəqiqədən az olduğuna görə qalıq balansınız geri qaytarılmayacaq";
+                        }
+                        else if (session.Order.CableState == CableState.B)
+                        {
+                            message = "2 dəqiqədən çox avtomobil ilə Charge Box arasında əlaqə olmadığı üçün sessiya sonlandırıldı və qalan şarj zamanı 5 dəqiqədən az olduğuna görə qalıq balansınız geri qaytarılmayacaq";
+                        }
+                        else if (session.Order.CableState == CableState.E || session.Order.CableState == CableState.F || session.Order.CableState == CableState.D)
+                        {
+                            message = "Bilinməyən xəta baş verdiyi üçün sessiya sonlandırıldı və qalan şarj zamanı 5 dəqiqədən az olduğuna görə qalıq balansınız geri qaytarılmayacaq";
+                        }
+
+                        description = "Geri odəniş olmadan ləğv";
+                    }
+                    else if (session.Order.Status == PaymentStatus.Refunded)
+                    {
+                        if (session.Order.CableState == CableState.A)
+                        {
+                            message = "3 dəqiqədən çox kabel bağlantısı olmadığı üçün sessiya bitirildi və qalıq balansınız geri qaytarıldı";
+                        }
+                        else if (session.Order.CableState == CableState.B)
+                        {
+                            message = "2 dəqiqədən çox avtomobil ilə Charge Box arasında əlaqə olmadığı üçün sessiya sonlandırıldı və qalıq balansınız geri qaytarıldı";
+                        }
+                        else if (session.Order.CableState == CableState.E || session.Order.CableState == CableState.F || session.Order.CableState == CableState.D)
+                        {
+                            message = "Bilinməyən xəta baş verdiyi üçün sessiya sonlandırıldı və qalıq balansınız geri qaytarıldı";
+                        }
+
+                        description = "Ləğv və geri ödəniş";
+                    }
+                }
+
+                return new SessionStatusResponse
+                {
+                    Timer = null,
+                    StartTime = session.StartDate,
+                    EndTime = session.EndDate,
+                    DurationInSeconds = (int)session.Duration.TotalSeconds,
+                    ChargingStatusCode = 3,
+                    ChargingStatusDescription = description,
+                    Message = message,
+                    ChargePointId = session.ChargerPointId,
+                    PricePerHour = session.PricePerHour,
+                    MaxAmperage = session.MaxAmperage,
+                    MaxVoltage = 22,
+                    Name = session.Name,
+                    HasProblem = true,
+                    CableStatus = session.Order.CableState,
+                    LastCableState = cableStateHook ?? default
+                };
+            }
+
+            if (session.StoppedByClient && session.Status == SessionStatus.StopByClient)
+            {
+                var message = string.Empty;
+                var description = string.Empty;
+
+                if (session.Order.Status == PaymentStatus.Charged)
+                {
+                    description = "Geri odəniş olmadan ləğv";
+                    message = "Sessiya admin tərəfindən dayandırıldı və qalan şarj zamanı 5 dəqiqədən az olduğuna görə qalıq balansınız geri qaytarılmayacaq.";
+                }
+                else if (session.Order.Status == PaymentStatus.Refunded)
+                {
+                    description = "Ləğv və geri ödəniş";
+                    message = "Sessiya admin tərəfindən dayandırıldı və qalıq balansınız geri qaytarıldı.";
+                }   
+                
+                return new SessionStatusResponse
+                {
+                    Timer = null,
+                    StartTime = session.StartDate,
+                    EndTime = session.EndDate,
+                    DurationInSeconds = (int)session.Duration.TotalSeconds,
+                    ChargingStatusCode = 3,
+                    ChargingStatusDescription = description,
+                    Message = message,
+                    ChargePointId = session.ChargerPointId,
+                    PricePerHour = session.PricePerHour,
+                    MaxAmperage = session.MaxAmperage,
+                    MaxVoltage = 22,
+                    Name = session.Name,
+                    HasProblem = true,
+                    CableStatus = session.Order.CableState,
+                    LastCableState = cableStateHook ?? default
+                };
+            }
+            
             return new SessionStatusResponse
             {
-                StatusCode = HttpStatusCode.InternalServerError,
-                ChargingStatusCode = 7,
-                ChargingStatusDescription = "Internal Server error",
-                Message = "Something went wrong",
-                LastCableState = cableStateHook ?? default
+                ChargingStatusCode = 4,
+                ChargingStatusDescription = "Xəta",
+                Message = "Daxili server xətası",
+                LastCableState = cableStateHook ?? default,
+                HasProblem = true,
             };
+        }
 
+        public async Task StopByClient(string orderId)
+        {
+            int maxRetryCount = 5;
+            int attempt = 0;
+            bool tryAgainForStopByClient = false;
+            var session = await _dataContext.Sessions.Include(x => x.Order).Include(x => x.CableStateHooks)
+                .FirstOrDefaultAsync(x => x.Order.OrderId == orderId);
+
+            if (session.Status == SessionStatus.Charging)
+            {
+                var providerChargingSession = await _chargePointApiClient.GetChargingSessionsAsync(session.ChargerPointId);
+                if (providerChargingSession != null)
+                {
+                    while (attempt < maxRetryCount)
+                    {
+                        try
+                        {
+                            attempt++;
+
+                            var result = await _chargeSession.Execute(session.Order.OrderId, false, false,
+                                false, false, tryAgainForStopByClient ,true);
+
+                            if (result is ChargeRequestStatus.StopSuccess)
+                            {
+                                break;
+                            }
+
+                            if (attempt == 1)
+                                tryAgainForStopByClient = true;
+
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex);
+                        }
+
+                        await Task.Delay(1000);
+                    }
+                }
+            }
         }
     }
 }

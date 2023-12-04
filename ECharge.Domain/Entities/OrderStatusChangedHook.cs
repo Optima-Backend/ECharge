@@ -12,7 +12,7 @@ namespace ECharge.Domain.Entities
         public string Status { get; set; }
         public string FinishReason { get; set; }
         public DateTime CreatedDate { get; set; }
-        public string SessionId { get; set; }
+        public string? SessionId { get; set; }
         public Session Session { get; set; }
     }
 }

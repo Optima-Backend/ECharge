@@ -1,14 +1,15 @@
-﻿using ECharge.Domain.ChargePointActions.Interface;
-using ECharge.Domain.CibPay.Interface;
+﻿using ECharge.Domain.CibPay.Interface;
 using ECharge.Domain.CibPay.Model.RefundOrder.Command;
+using ECharge.Domain.DTOs;
 using ECharge.Domain.Entities;
 using ECharge.Domain.Enums;
-using ECharge.Domain.EVtrip.Interfaces;
 using ECharge.Domain.EVtrip.Models;
 using ECharge.Infrastructure.Services.DatabaseContext;
 using ECharge.Infrastructure.Services.FirebaseNotification;
+using ECharge.Infrastructure.Services.Quartz;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Quartz;
 
 namespace ECharge.Api.Controllers
 {
@@ -17,15 +18,13 @@ namespace ECharge.Api.Controllers
     {
         private readonly DataContext _dataContext;
         private readonly ICibPayService _cibPayService;
-        private readonly IChargePointApiClient _chargePointApiClient;
-        private readonly IChargePointAction _chargePointAction;
+        private readonly IServiceProvider _serviceProvider;
 
-        public WebhookController(DataContext dataContext, ICibPayService cibPayService, IChargePointApiClient chargePointApiClient, IChargePointAction chargePointAction)
+        public WebhookController(DataContext dataContext, ICibPayService cibPayService, IServiceProvider serviceProvider)
         {
             _dataContext = dataContext;
             _cibPayService = cibPayService;
-            _chargePointApiClient = chargePointApiClient;
-            _chargePointAction = chargePointAction;
+            _serviceProvider = serviceProvider;
         }
 
         [HttpPost("cable-state-changed")]
@@ -39,9 +38,67 @@ namespace ECharge.Api.Controllers
                     .Where(x => x.ChargerPointId == payload.ChargerId && x.Status == SessionStatus.Charging)
                     .FirstOrDefault();
 
-                if (session == null) return;
+                if (session != null)
+                {
+                    var orderId = session.Order.OrderId;
 
-                var orderId = session.Order.OrderId;
+                    var updatedOrder = await _dataContext.Orders.FindAsync(session.OrderId);
+
+                    string title = string.Empty;
+                    string body = string.Empty;
+
+                    if (payload.CableState == "A")
+                    {
+                        updatedOrder.CableState = CableState.A;
+                        title = "Kabel xətası";
+                        body = "Kabel bağlantısını bərpa etmək üçün 3 dəqiqə vaxtınız var əks təqdirdə sessiya sonlandırılacaq";
+
+                    }
+                    else if (payload.CableState == "B")
+                    {
+                        updatedOrder.CableState = CableState.B;
+
+                        title = "Əlaqə xətası";
+                        body = "Avtomobil ilə Charge Box arasında əlaqə kəsilib, 2 dəqiqə ərzində sessiya sonlandırılacaq";
+
+                        var factory = _serviceProvider.GetRequiredService<ISchedulerFactory>();
+                        var scheduler = await factory.GetScheduler("echarge_actions");
+
+                        var scheduleJobs = new ScheduleJobs(scheduler);
+                        await scheduleJobs.ScheduleJob2(session.Id);
+
+                    }
+                    else if (payload.CableState == "C")
+                    {
+                        updatedOrder.CableState = CableState.C;
+                        title = "Şarj davam edir";
+                        body = "Əlaqəsi yenidən təmin edildiyi üçün sessiya davam edir";
+                    }
+                    else if (payload.CableState == "E" || payload.CableState == "F" || payload.CableState == "D")
+                    {
+                        if (payload.CableState == "E")
+                            updatedOrder.CableState = CableState.E;
+                        else if (payload.CableState == "F")
+                            updatedOrder.CableState = CableState.F;
+                        else if (payload.CableState == "D")
+                            updatedOrder.CableState = CableState.D;
+
+                        title = "Bilinməyən xəta";
+                        body = "1 dəqiqə ərzində sessiya sonlandırılacaq";
+                    }
+
+                    await _dataContext.Notifications.AddAsync(new Notification
+                    {
+                        UserId = session.UserId,
+                        FCMToken = session.FCMToken,
+                        SessionId = session.Id,
+                        Title = title,
+                        Message = body,
+                        IsCableStatus = true
+                    });
+
+                    FirebaseNotification.PushNotification(new FirebasePayload { FCMToken = session.FCMToken, Title = title, Body = body });
+                }
 
                 await _dataContext.CableStateHooks.AddAsync(new CableStateHook
                 {
@@ -49,47 +106,11 @@ namespace ECharge.Api.Controllers
                     ChargePointId = payload.ChargerId,
                     Connector = payload.Connector,
                     CreatedDate = DateTime.Now,
-                    SessionId = session.Id
+                    SessionId = session != null ? session.Id : null
                 });
 
-                var updatedOrder = await _dataContext.Orders.FindAsync(session.OrderId);
-
-                string title = string.Empty;
-                string body = string.Empty;
-
-                if (payload.CableState == "A")
-                {
-                    updatedOrder.CableState = CableState.A;
-                    title = "Kabel əlaqəsi kəsildi";
-                    body = "30 saniyə ərzində kabel ələqəsini təmin etməsəniz sessiyanız bağlanacaq və qalıq balans kartınıza geri göndəriləcək";
-
-                }
-                else if (payload.CableState == "B")
-                {
-                    updatedOrder.CableState = CableState.B;
-                }
-                else if (payload.CableState == "C")
-                {
-                    updatedOrder.CableState = CableState.C;
-                    title = "Kabel əlaqəsi bərpa edildi";
-                    body = "Kabel əlaqəsi yenidən təmin edildiyi üçün sessiya davam edir";
-                }
-                else if (payload.CableState == "D")
-                {
-                    updatedOrder.CableState = CableState.D;
-                }
-                else if (payload.CableState == "E")
-                {
-                    updatedOrder.CableState = CableState.E;
-                }
-                else if (payload.CableState == "F")
-                {
-                    updatedOrder.CableState = CableState.F;
-                }
 
                 await _dataContext.SaveChangesAsync();
-
-                Notification.PushNotification(new FirebasePayload { FCMToken = session.FCMToken, Title = title, Body = body });
 
                 #region SignalR
                 //var connectionId = ChargerHub.GetConnectionIdByOrderId(orderId);
@@ -103,67 +124,171 @@ namespace ECharge.Api.Controllers
             }
         }
 
-        [HttpPost("order/status-changed")]
+        [HttpPost("/order/status-changed")]
         public async Task HandleOrderStatusChanged([FromBody] OrderStatusChangedPayload payload)
         {
-            if (payload is not null)
+            if (payload != null)
             {
-                var session = _dataContext.Sessions
-                   .Include(x => x.Order)
-                   .Where(x => x.ChargerPointId == payload.ChargerId && x.Status == SessionStatus.Charging && x.ProviderStatus == ProviderChargingSessionStatus.active)
-                   .FirstOrDefault();
-
-                if (session == null) return;
-
-
-                var calculatedOrderResult = await GetCalculatedOrder(payload.ChargerId);
-                var doesRefundNeed = calculatedOrderResult.RemainingTimeInMinutes >= 5;
-
-                if (doesRefundNeed)
-                    await UpdateOrder(calculatedOrderResult);
-
-                string title = string.Empty;
-                string body = string.Empty;
-
-                if (payload.FinishReason == "REQUESTED_BY_CABLE_STATE")
+                if (await _dataContext.Sessions.AnyAsync(x =>
+                        x.ChargerPointId == payload.ChargerId && x.Status == SessionStatus.Charging &&
+                        x.ProviderStatus == ProviderChargingSessionStatus.active))
                 {
-                    var updatedSession = await _dataContext.Sessions.FindAsync(session.Id);
-                    updatedSession.Status = SessionStatus.WebhookCanceled;
-                    updatedSession.ProviderStatus = ProviderChargingSessionStatus.closed;
-                    updatedSession.EndDate = DateTime.Now;
-                    updatedSession.UpdatedTime = DateTime.Now;
-                    updatedSession.FinishReason = FinishReason.REQUESTED_BY_CABLE_STATE;
+                    var session = _dataContext.Sessions
+                        .Include(x => x.Order)
+                        .FirstOrDefault(x =>
+                            x.ChargerPointId == payload.ChargerId && x.Status == SessionStatus.Charging &&
+                            x.ProviderStatus == ProviderChargingSessionStatus.active);
 
-                    title = "Sessiya dayandırıldı";
-                    body = "Kabel əlaqəsi 30 saniyə ərzində təmin edilmədiyi üçün sessiya dayandırıldı";
+                    var cableStateHook = await _dataContext.CableStateHooks
+                    .AsNoTracking()
+                    .Where(x => x.SessionId == session.Id).Select(x => new CableStateHookDTO
+                    {
+                        ChargePointId = x.ChargePointId,
+                        CableState = x.CableState,
+                        Connector = x.Connector,
+                        SessionId = x.SessionId,
+                        CreatedDate = x.CreatedDate
+                    }).OrderByDescending(x => x.CreatedDate).FirstOrDefaultAsync();
+
+                    var calculatedOrderResult = await GetCalculatedOrder(payload.ChargerId);
+                    var doesRefundNeed = calculatedOrderResult.RemainingTimeInMinutes >= 5;
+
+                    string title = string.Empty;
+                    string body = string.Empty;
+
+                    if (payload.FinishReason == "REQUESTED_BY_CLIENT" && session!.StoppedByClient)
+                        session.Status = SessionStatus.StopByClient;
+                    else
+                        session!.Status = SessionStatus.WebhookCanceled;
+
+                    session.ProviderStatus = ProviderChargingSessionStatus.closed;
+                    session.EndDate = DateTime.Now;
+                    session.UpdatedTime = DateTime.Now;
+
+                    Dictionary<string, FinishReason> finishReasonMapping = new()
+                    {
+                        { FinishReason.REQUESTED_BY_CABLE_STATE.ToString(), FinishReason.REQUESTED_BY_CABLE_STATE },
+                        { FinishReason.CHARGING_LOW_POWER.ToString(), FinishReason.CHARGING_LOW_POWER },
+                        { FinishReason.PLUG_AND_CHARGE_STOP.ToString(), FinishReason.PLUG_AND_CHARGE_STOP },
+                        { FinishReason.REQUESTED_BY_CLIENT.ToString(), FinishReason.REQUESTED_BY_CLIENT },
+                        { FinishReason.REQUESTED_BY_CPO.ToString(), FinishReason.REQUESTED_BY_CPO },
+                        { FinishReason.REQUESTED_BY_OWNER.ToString(), FinishReason.REQUESTED_BY_OWNER },
+                        { FinishReason.CHARGING_START_FAIL.ToString(), FinishReason.CHARGING_START_FAIL },
+                        { FinishReason.CHARGER_ALARM.ToString(), FinishReason.CHARGER_ALARM }
+                        
+                    };
+
+                    if (finishReasonMapping.TryGetValue(payload.FinishReason, out var value))
+                        session.FinishReason = value;
+
+                    if (cableStateHook != null && cableStateHook.CableState != CableState.C.ToString() && session.FinishReason != FinishReason.REQUESTED_BY_CLIENT)
+                    {
+                        if (cableStateHook.CableState == CableState.A.ToString())
+                        {
+                            if (doesRefundNeed)
+                            {
+                                await UpdateOrder(calculatedOrderResult);
+                                title = "Ləğv və geri ödəniş";
+                                body = "3 dəqiqədən çox kabel bağlantısı bərpa edilmədiyi üçün sessiya bitirildi və qalıq balansınız geri qaytarıldı.";
+                            }
+                            else
+                            {
+                                title = "Geri odəniş olmadan ləğv";
+                                body = "3 dəqiqədən çox kabel bağlantısı bərpa edilmədiyi üçün sessiya bitirildi və qalan şarj zamanı 5 dəqiqədən az olduğuna görə qalıq balansınız geri qaytarılmayacaq.";
+                            }
+
+                        }
+                        else if (cableStateHook.CableState == CableState.B.ToString())
+                        {
+                            if (doesRefundNeed)
+                            {
+                                await UpdateOrder(calculatedOrderResult);
+                                title = "Ləğv və geri ödəniş";
+                                body = "2 dəqiqədən çox avtomobil ilə Charge Box arasında əlaqə olmadığı üçün sessiya sonlandırıldı və qalıq balansınız geri qaytarıldı.";
+                            }
+                            else
+                            {
+                                title = "Geri odəniş olmadan ləğv";
+                                body = "2 dəqiqədən çox avtomobil ilə Charge Box arasında əlaqə olmadığı üçün sessiya sonlandırıldı və qalan şarj zamanı 5 dəqiqədən az olduğuna görə qalıq balansınız geri qaytarılmayacaq.";
+                            }
+                        }
+                        else if (cableStateHook.CableState == CableState.D.ToString() || cableStateHook.CableState == CableState.E.ToString() || cableStateHook.CableState == CableState.F.ToString())
+                        {
+                            if (doesRefundNeed)
+                            {
+                                await UpdateOrder(calculatedOrderResult);
+                                title = "Ləğv və geri ödəniş";
+                                body = "Bilinməyən xəta baş verdiyi üçün sessiya sonlandırıldı və qalıq balansınız geri qaytarıldı.";
+                            }
+                            else
+                            {
+                                title = "Geri odəniş olmadan ləğv";
+                                body = "Bilinməyən xəta baş verdiyi üçün sessiya sonlandırıldı və qalan şarj zamanı 5 dəqiqədən az olduğuna görə qalıq balansınız geri qaytarılmayacaq.";
+                            }
+                        }
+                    }
+                    else if (cableStateHook == null && payload.FinishReason == FinishReason.REQUESTED_BY_CABLE_STATE.ToString())
+                    {
+                        await UpdateOrder(calculatedOrderResult);
+                        title = "Ləğv və geri ödəniş";
+                        body = "Kabel bağlantısı təmin edilmədiyi üçün sessiya bitirildi və qalıq balansınız geri qaytarıldı.";
+                    }
+
+                    if (session.FinishReason == FinishReason.REQUESTED_BY_CLIENT && session.StoppedByClient)
+                    {
+                        session.Status = SessionStatus.StopByClient;
+                        
+                        if (doesRefundNeed)
+                        {
+                            await UpdateOrder(calculatedOrderResult);
+                            title = "Ləğv və geri ödəniş";
+                            body = "Sessiya admin tərəfindən dayandırıldı və qalıq balansınız geri qaytarıldı.";
+                        }
+                        else
+                        {
+                            title = "Geri odəniş olmadan ləğv";
+                            body = "Sessiya admin tərəfindən dayandırıldı və qalan şarj zamanı 5 dəqiqədən az olduğuna görə qalıq balansınız geri qaytarılmayacaq.";
+                        }
+                    }
+                    
+                    await _dataContext.OrderStatusChangedHooks.AddAsync(new OrderStatusChangedHook
+                    {
+                        ChargerId = payload.ChargerId,
+                        Connector = payload.Connector,
+                        FinishReason = payload.FinishReason,
+                        OrderUuid = payload.OrderUuid,
+                        SessionId = session.Id,
+                        Status = payload.Status,
+                        CreatedDate = DateTime.Now
+                    });
+
+                    await _dataContext.Notifications.AddAsync(new Notification
+                    {
+                        UserId = session.UserId,
+                        FCMToken = session.FCMToken,
+                        SessionId = session.Id,
+                        Title = title,
+                        Message = body,
+                        IsCableStatus = false
+                    });
+
+                    await _dataContext.SaveChangesAsync();
+
+                    FirebaseNotification.PushNotification(new FirebasePayload { FCMToken = session.FCMToken, Title = title, Body = body });
                 }
-
-                await _dataContext.OrderStatusChangedHooks.AddAsync(new OrderStatusChangedHook
+                else
                 {
-                    ChargerId = payload.ChargerId,
-                    Connector = payload.Connector,
-                    FinishReason = payload.FinishReason,
-                    OrderUuid = payload.OrderUuid,
-                    SessionId = session.Id,
-                    Status = payload.Status,
-                    CreatedDate = DateTime.Now
-                });
-
-                await _dataContext.SaveChangesAsync();
-
-                Notification.PushNotification(new FirebasePayload { FCMToken = session.FCMToken, Title = title, Body = body });
-                #region SignalR
-                //var connectionId = ChargerHub.GetConnectionIdByOrderId(session.Order.OrderId);
-                //if (!string.IsNullOrEmpty(connectionId))
-                //{
-                //    var hubUser = _hubContext.Clients.Clients(connectionId);
-
-                //    var sessionStatusResponse = await _chargePointAction.GetSessionStatus(session.Order.OrderId);
-
-                //    await hubUser.SendAsync("From_Server_To_Client", sessionStatusResponse);
-
-                //};
-                #endregion
+                    await _dataContext.OrderStatusChangedHooks.AddAsync(new OrderStatusChangedHook
+                    {
+                        ChargerId = payload.ChargerId,
+                        Connector = payload.Connector,
+                        FinishReason = payload.FinishReason,
+                        OrderUuid = payload.OrderUuid,
+                        Status = payload.Status,
+                        CreatedDate = DateTime.Now
+                    });
+                    await _dataContext.SaveChangesAsync();
+                }
             }
         }
 

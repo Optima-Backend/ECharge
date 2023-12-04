@@ -10,6 +10,7 @@ public class Session
     public Session()
     {
         CableStateHooks = new HashSet<CableStateHook>();
+        Notifications = new HashSet<Notification>();
     }
 
     [Key]
@@ -50,6 +51,8 @@ public class Session
 
     public int? MaxVoltage { get; set; }
 
+    public bool StoppedByClient { get; set; }
+
     [Required]
     public string FCMToken { get; set; }
 
@@ -64,5 +67,6 @@ public class Session
     public ProviderChargingSessionStatus ProviderStatus { get; set; }
 
     public virtual ICollection<CableStateHook> CableStateHooks { get; set; }
+    public virtual ICollection<Notification> Notifications { get; set; }
 
 }

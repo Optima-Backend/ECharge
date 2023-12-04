@@ -1,6 +1,9 @@
-﻿using ECharge.Infrastructure;
+﻿using ECharge.Api.Logging;
+using ECharge.Infrastructure;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
+using Serilog;
+using Serilog.Events;
 
 internal class Program
 {
@@ -12,6 +15,19 @@ internal class Program
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .Build();
+
+        Log.Logger = new LoggerConfiguration()
+        .MinimumLevel.Debug()
+        .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .Enrich.WithMachineName()
+        .Enrich.WithThreadId()
+        .WriteTo.Console()
+        .ReadFrom.Configuration(configuration)
+        .CreateLogger();
+
+        builder.Services.AddLogging(loggingBuilder =>
+            loggingBuilder.AddSerilog(dispose: true));
 
         builder.Services.AddCors(options =>
         {
@@ -69,6 +85,8 @@ internal class Program
         var app = builder.Build();
 
         //app.MapHub<ChargerHub>("/chargerHub");
+
+        app.UseMiddleware<LoggingMiddleware>();
 
         app.UseCors("CorsPolicy");
 

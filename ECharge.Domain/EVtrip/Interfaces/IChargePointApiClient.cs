@@ -11,5 +11,6 @@ namespace ECharge.Domain.EVtrip.Interfaces
         Task<OperationResult<ChargePoint>> GetSingleChargerAsync(string chargepointId);
         Task<OperationResult<ChargingSession>> StartChargingAsync(string chargepointId, StartChargingRequest request);
         Task<OperationResult<ChargingSession>> StopChargingAsync(string chargepointId, StopChargingRequest request);
+        Task<List<ChargingSession>> GetSingleChargePointSessions(string chargepointId);
     }
 }

@@ -2,7 +2,7 @@
 
 namespace ECharge.Infrastructure.Services.FirebaseNotification
 {
-    public class Notification
+    public class FirebaseNotification
     {
         public static async void PushNotification(FirebasePayload payload)
         {

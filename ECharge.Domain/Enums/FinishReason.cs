@@ -34,7 +34,19 @@ namespace ECharge.Domain.Enums
         /// <summary>
         /// The charging session was finished because a cable was removed for more than 30 seconds.
         /// </summary>
-        REQUESTED_BY_CABLE_STATE
+        REQUESTED_BY_CABLE_STATE,
+
+        /// <summary>
+        /// 
+        /// </summary>
+        REQUESTED_BY_CLIENT,
+
+        /// <summary>
+        /// 
+        /// </summary>
+        REQUESTED_BY_CPO,
+
+
     }
 
 }

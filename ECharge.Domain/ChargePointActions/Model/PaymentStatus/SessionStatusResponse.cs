@@ -6,11 +6,8 @@ namespace ECharge.Domain.ChargePointActions.Model.PaymentStatus
 {
     public class SessionStatusResponse
     {
-        public HttpStatusCode StatusCode { get; set; }
         public int ChargingStatusCode { get; set; }
         public string Message { get; set; }
-        public int RemainingStartTimeInSeconds { get; set; }
-        public int RemainingChargingTimeInSeconds { get; set; }
         public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
         public int DurationInSeconds { get; set; }
@@ -22,6 +19,8 @@ namespace ECharge.Domain.ChargePointActions.Model.PaymentStatus
         public string Name { get; set; }
         public CableState? CableStatus { get; set; }
         public CableStateHookDTO LastCableState { get; set; }
+        public int? Timer { get; set; }
+        public bool HasProblem { get; set; }
 
     }
 }

@@ -58,7 +58,6 @@ namespace ECharge.Api.Controllers
 
         [Route("/api/echarge/payment-redirect-url")]
         [HttpGet]
-        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<IActionResult> RedirectUrl(string order_id)
         {
             await _chargePointAction.PaymentHandler(order_id);
@@ -73,6 +72,21 @@ namespace ECharge.Api.Controllers
         public async Task<object> GetSessionStatus(string orderId)
         {
             return await _chargePointAction.GetSessionStatus(orderId);
+        }
+        
+        [Route("/api/echarge/stop-by-client")]
+        [HttpGet]
+        public async Task<IActionResult>  StopByClient(string orderId)
+        {
+            try
+            {
+                await _chargePointAction.StopByClient(orderId);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return Problem(detail: ex.Message, statusCode: 500);
+            }
         }
     }
 }

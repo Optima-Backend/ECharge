@@ -9,7 +9,7 @@ public class CertificatePath
     public CertificatePath()
     {
         var assemblyFolder = Assembly.GetExecutingAssembly().Location;
-        var certificatePath = Path.Combine(Path.GetDirectoryName(assemblyFolder), "Services/CibPay/Certificate/Api/taxiapp.p12");
+        var certificatePath = Path.Combine(Path.GetDirectoryName(assemblyFolder), "Services/CibPay/Certificate/Api/api-chargebox.p12");
 
         CurrentPath = certificatePath;
     }

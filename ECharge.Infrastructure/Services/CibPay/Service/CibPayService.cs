@@ -109,7 +109,7 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
                 {
                     amount = command.Amount,
                     currency = _currency,
-                    extra_fields = new { user_id = command.UserId, charge_point_id = command.ChargePointId },
+                    custom_fields = new { charge_point_id = command.ChargePointId },
                     merchant_order_id = command.MerchantOrderId,
                     options = new
                     {
@@ -121,8 +121,8 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
                     },
                     client = new
                     {
-                        name = command.Name,
-                        email = command.Email
+                        name = "Optima Group CO",
+                        email = "info@optima.az"
                     }
                 };
 
@@ -162,7 +162,9 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
                     ["card.type"] = query.CardType,
                     ["card.subtype"] = query.CardSubtype,
                     ["location.ip"] = query.IpAddress,
-                    ["expand"] = query.Expand
+                    ["expand"] = query.Expand,
+                    ["page"] = query.PageIndex.ToString(),
+                    ["page_size"] = query.PageSize.ToString()
                 };
 
                 endpoint = QueryHelpers.AddQueryString(endpoint, queryParameters);
@@ -227,7 +229,7 @@ namespace ECharge.Infrastructure.Services.CibPay.Service
         {
             var cPath = new CertificatePath();
 
-            return new X509Certificate2(cPath.CurrentPath, "nBR2SFVWZ02g");
+            return new X509Certificate2(cPath.CurrentPath, "vakE1quIXIZc");
         }
     }
 }

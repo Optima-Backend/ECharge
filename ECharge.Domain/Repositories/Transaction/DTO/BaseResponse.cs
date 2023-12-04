@@ -9,6 +9,11 @@ namespace ECharge.Domain.Repositories.Transaction.DTO
         public string Error { get; set; }
     }
 
+    public class BaseResponse<T> : BaseResponse
+    {
+        public T Data { get; set; }
+    }
+
     public class BaseResponseWithPagination<T> : BaseResponse
     {
         public IQueryable<T> Data { get; set; }

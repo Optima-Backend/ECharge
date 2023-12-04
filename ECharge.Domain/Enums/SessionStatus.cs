@@ -7,5 +7,6 @@ public enum SessionStatus
     FullyCharged,
     Complated,
     Canceled,
-    WebhookCanceled
+    WebhookCanceled,
+    StopByClient
 }

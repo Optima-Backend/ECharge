@@ -6,11 +6,25 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ECharge.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitEChargeDB : Migration
+    public partial class InitEChargedb : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "LogEntries",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RequestResponseDetails = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LogEntries", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "Orders",
                 columns: table => new
@@ -55,6 +69,7 @@ namespace ECharge.Infrastructure.Migrations
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ChargePointName = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     MaxVoltage = table.Column<int>(type: "int", nullable: true),
+                    StoppedByClient = table.Column<bool>(type: "bit", nullable: false),
                     FCMToken = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     MaxAmperage = table.Column<int>(type: "int", nullable: true),
                     EnergyConsumption = table.Column<double>(type: "float", nullable: true),
@@ -96,6 +111,32 @@ namespace ECharge.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Notifications",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SessionId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Message = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Title = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    HasSeen = table.Column<bool>(type: "bit", nullable: false),
+                    IsCableStatus = table.Column<bool>(type: "bit", nullable: false),
+                    FCMToken = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Notifications", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Notifications_ChargePointSession_SessionId",
+                        column: x => x.SessionId,
+                        principalTable: "ChargePointSession",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "OrderStatusChangedHooks",
                 columns: table => new
                 {
@@ -130,6 +171,11 @@ namespace ECharge.Infrastructure.Migrations
                 column: "OrderId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Notifications_SessionId",
+                table: "Notifications",
+                column: "SessionId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_OrderStatusChangedHooks_SessionId",
                 table: "OrderStatusChangedHooks",
                 column: "SessionId");
@@ -140,6 +186,12 @@ namespace ECharge.Infrastructure.Migrations
         {
             migrationBuilder.DropTable(
                 name: "CableStateHooks");
+
+            migrationBuilder.DropTable(
+                name: "LogEntries");
+
+            migrationBuilder.DropTable(
+                name: "Notifications");
 
             migrationBuilder.DropTable(
                 name: "OrderStatusChangedHooks");

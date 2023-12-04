@@ -52,6 +52,66 @@ namespace ECharge.Infrastructure.Migrations
                     b.ToTable("CableStateHooks");
                 });
 
+            modelBuilder.Entity("ECharge.Domain.Entities.LogEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("RequestResponseDetails")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("LogEntries");
+                });
+
+            modelBuilder.Entity("ECharge.Domain.Entities.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FCMToken")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("HasSeen")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsCableStatus")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Title")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId");
+
+                    b.ToTable("Notifications");
+                });
+
             modelBuilder.Entity("ECharge.Domain.Entities.Order", b =>
                 {
                     b.Property<int>("Id")
@@ -202,6 +262,9 @@ namespace ECharge.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("Charging status");
 
+                    b.Property<bool>("StoppedByClient")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime?>("UpdatedTime")
                         .HasColumnType("datetime2");
 
@@ -220,6 +283,17 @@ namespace ECharge.Infrastructure.Migrations
                     b.HasOne("ECharge.Domain.Entities.Session", "Session")
                         .WithMany("CableStateHooks")
                         .HasForeignKey("SessionId");
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("ECharge.Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("ECharge.Domain.Entities.Session", "Session")
+                        .WithMany("Notifications")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Session");
                 });
@@ -247,6 +321,8 @@ namespace ECharge.Infrastructure.Migrations
             modelBuilder.Entity("ECharge.Domain.Entities.Session", b =>
                 {
                     b.Navigation("CableStateHooks");
+
+                    b.Navigation("Notifications");
                 });
 #pragma warning restore 612, 618
         }

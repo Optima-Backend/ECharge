@@ -7,5 +7,6 @@ public class CableStateQuery
     public string ChargePointId { get; set; }
     public string SessionId { get; set; }
     public string CableState { get; set; }
-    public DateTime? CreatedDate { get; set; }
+    public DateTime? CreatedDateFrom { get; set; }
+    public DateTime? CreatedDateTo { get; set; }
 }

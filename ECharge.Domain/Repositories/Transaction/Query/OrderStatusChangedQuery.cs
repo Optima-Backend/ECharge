@@ -6,6 +6,7 @@ public class OrderStatusChangedQuery
     public int PageIndex { get; set; } = 1;
     public string ChargePointId { get; set; }
     public string OrderUuid { get; set; }
-    public DateTime? CreatedDate { get; set; }
+    public DateTime? CreatedDateFrom { get; set; }
+    public DateTime? CreatedDateTo { get; set; }
     public string SessionId { get; set; }
 }

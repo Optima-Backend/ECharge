@@ -212,7 +212,8 @@ namespace ECharge.Infrastructure.Repositories.Transaction
             if (adminTransactionDtos.Any())
             {
                 response.StatusCode = System.Net.HttpStatusCode.OK;
-                await response.SetDataAsync(adminTransactionDtos, query.PageIndex, query.PageSize);
+                await response.SetDataAsync(adminTransactionDtos.OrderByDescending(x => x.Created), query.PageIndex,
+                    query.PageSize);
             }
             else
             {
@@ -259,7 +260,7 @@ namespace ECharge.Infrastructure.Repositories.Transaction
             if (inboxDTO.Any())
             {
                 response.StatusCode = System.Net.HttpStatusCode.OK;
-                await response.SetDataAsync(inboxDTO, query.PageIndex, query.PageSize);
+                await response.SetDataAsync(inboxDTO.OrderByDescending(x => x.CreatedDate), query.PageIndex, query.PageSize);
             }
             else
             {
@@ -312,11 +313,15 @@ namespace ECharge.Infrastructure.Repositories.Transaction
             {
                 cableStates = cableStates.Where(x => x.CableState == query.CableState.ToUpper());
             }
-
-            if (query.CreatedDate.HasValue)
+            
+            if (query.CreatedDateFrom.HasValue)
             {
-                cableStates = cableStates.Where(predicate: x =>
-                    DateTime.Compare(x.CreatedDate.Date, query.CreatedDate.Value.Date) == 0);
+                cableStates = cableStates.Where(x => x.CreatedDate >= query.CreatedDateFrom.Value);
+            }
+
+            if (query.CreatedDateTo.HasValue)
+            {
+                cableStates = cableStates.Where(x => x.CreatedDate <= query.CreatedDateTo.Value);
             }
 
             var cableStatesDto = cableStates.ProjectTo<CableStateDTO>(_mapper.ConfigurationProvider);
@@ -326,7 +331,7 @@ namespace ECharge.Infrastructure.Repositories.Transaction
             if (cableStatesDto.Any())
             {
                 response.StatusCode = System.Net.HttpStatusCode.OK;
-                await response.SetDataAsync(cableStatesDto, query.PageIndex, query.PageSize);
+                await response.SetDataAsync(cableStatesDto.OrderByDescending(x => x.CreatedDate), query.PageIndex, query.PageSize);
             }
             else
             {
@@ -357,10 +362,14 @@ namespace ECharge.Infrastructure.Repositories.Transaction
                 orderStatusChangedHooks = orderStatusChangedHooks.Where(x => x.OrderUuid == query.OrderUuid);
             }
 
-            if (query.CreatedDate.HasValue)
+            if (query.CreatedDateFrom.HasValue)
             {
-                orderStatusChangedHooks = orderStatusChangedHooks.Where(x =>
-                    DateTime.Compare(x.CreatedDate.Date, query.CreatedDate.Value.Date) == 0);
+                orderStatusChangedHooks = orderStatusChangedHooks.Where(x => x.CreatedDate >= query.CreatedDateFrom.Value);
+            }
+
+            if (query.CreatedDateTo.HasValue)
+            {
+                orderStatusChangedHooks = orderStatusChangedHooks.Where(x => x.CreatedDate <= query.CreatedDateTo.Value);
             }
 
             var orderStatusChangedHooksDto =
@@ -371,7 +380,8 @@ namespace ECharge.Infrastructure.Repositories.Transaction
             if (orderStatusChangedHooksDto.Any())
             {
                 response.StatusCode = System.Net.HttpStatusCode.OK;
-                await response.SetDataAsync(orderStatusChangedHooksDto, query.PageIndex, query.PageSize);
+                await response.SetDataAsync(orderStatusChangedHooksDto.OrderByDescending(x => x.CreatedDate),
+                    query.PageIndex, query.PageSize);
             }
             else
             {
@@ -486,7 +496,7 @@ namespace ECharge.Infrastructure.Repositories.Transaction
                         response.PageIndex = pageIndex.Value;
                         response.PageSize = pageSize.Value;
                         response.TotalPage = (int)Math.Ceiling(totalCount / (double)pageSize);
-                        response.Data = result2.Orders.AsQueryable();
+                        response.Data = result2.Orders.OrderByDescending(x => x.Created).AsQueryable();
                     }
                     else
                         response.Message = "No results were found matching the entered information";
@@ -652,7 +662,7 @@ namespace ECharge.Infrastructure.Repositories.Transaction
                     ws.Cell("K3").Style.Border.RightBorder = XLBorderStyleValues.Thin;
 
                     int rowIndex = 4;
-                    foreach (var data in orders.Orders)
+                    foreach (var data in orders.Orders.OrderByDescending(x=>x.Created))
                     {
                         ws.Cell("A" + rowIndex).Value = rowIndex - 3;
                         ws.Cell("A" + rowIndex).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;

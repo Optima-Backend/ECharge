@@ -20,8 +20,8 @@ public class DataContext : DbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         //optionsBuilder.UseSqlServer(_connectionString);
-        optionsBuilder.UseSqlServer("Server=localhost,1433;Database=EChargeDemo;Trusted_Connection=False;User=SA;Password=87arMWD5;TrustServerCertificate=True");
-        // optionsBuilder.UseSqlServer("Data Source=.\\DEV,8082;Initial Catalog=EChargeDemo;User ID=sa;Password=87ARmwd5;Pooling=True;TrustServerCertificate=True;Trusted_Connection=False");
+        // optionsBuilder.UseSqlServer("Server=localhost,1433;Database=EChargeDemo;Trusted_Connection=False;User=SA;Password=87arMWD5;TrustServerCertificate=True");
+        optionsBuilder.UseSqlServer("Data Source=.\\DEV,8082;Initial Catalog=EChargeDemo;User ID=sa;Password=87ARmwd5;Pooling=True;TrustServerCertificate=True;Trusted_Connection=False");
     }
 
     public DbSet<LogEntry> LogEntries { get; set; }
